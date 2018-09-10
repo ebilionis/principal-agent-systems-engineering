@@ -38,7 +38,7 @@ class Sys(object):
 		t_f_jac = self.t_grad_neg_fun(t_param, t_eff)
 
 		nvar = self.subsys.M * self.subsys.N
-		a0 = np.concatenate([np.random.uniform(-0.5, 1.4, 1), np.random.uniform(0.0, 1.4, nvar-1)])
+		a0 = np.concatenate([np.random.uniform(-0.5, 0.5, 1), np.random.uniform(0.0, 1.0, nvar-1)])
 		self.sse_eff, self.sse_obj = self.subsys.solve_sse_effort(a0)
 
 
@@ -52,13 +52,13 @@ class Sys(object):
 		cons += [{'type': 'ineq', 'fun': lambda x: self.sse_obj[i], \
 				'jac': lambda x:self.subsys.grad_sse_utility_compile[i](x, self.sse_eff)} for i in range(N)] # this should be corercted
 		#cons += [{'type': 'ineq', 'fun': lambda x: 1.0 - np.sum(x[i*M:(i+1)*M])} for i in range(N)]
-		bnds = ([(-0.5, 1.5)]+[(0.0, 1.5)]*(nvar-1))
+		bnds = ([(-0.5, .5)]+[(0.0, 1.0)]*(nvar-1))
 		for r in range(restarts):
 			
 			res = opt.minimize(self.neg_se_obj_fun, x0 = a0, args=(self.sse_eff,), method = 'slsqp', 
 								jac=f_jac, constraints = cons, options={'disp':True},  bounds = bnds)
 
-			a0 = np.concatenate([np.random.uniform(-0.5, 1.4, 1), np.random.uniform(0.0, 1.4, nvar-1)]) # change this later
+			a0 = np.concatenate([np.random.uniform(-0.5, 0.5, 1), np.random.uniform(0.0, 1.0, nvar-1)]) # change this later
 
 			print r
 			if res.fun < compare:
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 	t_kappa = T.as_tensor(np.array([1.4]))
 	t_delta = T.as_tensor(np.array([.2]))
 	t_cs = T.as_tensor(np.array([0.3]))
-	M = 6
+	M = 20
 	t_mu = T.as_tensor(np.linspace(0.0, 1.3, M))
 	t_qvals = T.as_tensor(np.array([1.]))
 	t_parameters = T.dvector('parameters')

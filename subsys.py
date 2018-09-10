@@ -216,7 +216,7 @@ if __name__ == '__main__':
        4.50151862e-17, 2.48295977e-17, 6.12169763e-17, 1.41423206e-16,
        2.21752411e-17, 4.10283458e-17, 1.42394255e-16, 1.44250296e-17,
        2.46226378e-17, 1.58282510e-17, 3.18774817e-01, 4.23425676e-02])
-		param /= np.sum(param)
+		# param /= np.sum(param)
 		h3 = []
 		h4 = []
 		for i in eff:
@@ -241,7 +241,7 @@ if __name__ == '__main__':
 	print 'time: ', t1 - t0
 	print x
 	print o
-	print sys.grad_sse_utility_compile[1](param, x)
+	print sys.grad_sse_utility_compile[0](param, x)
 	plt.show()
 
 	
