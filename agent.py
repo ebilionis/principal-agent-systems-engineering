@@ -1,7 +1,8 @@
+import sys  
+sys.path.append('/home/ssafarkh/dpasgp-master/ieee')
 from theano import tensor as T
 from theano import function
 import theano
-
 from theano.tensor.shared_randomstreams import RandomStreams
 import matplotlib
 matplotlib.use('TkAgg')
@@ -20,9 +21,9 @@ def split(container, count):
 
 
 class Agent(object):
-	def __init__(self, N, kappa, delta, cs, M, mu, qvals, ncoloc):
+	def __init__(self, N, ucoeff, delta, cs, M, mu, qvals, ncoloc):
 		self.N = N
-		self.kappa = kappa
+		self.ucoeff = ucoeff
 		self.delta = delta
 		self.cs = cs
 		self.M = M
@@ -48,9 +49,9 @@ class Agent(object):
 
 		self.t_w = T.dmatrix('w')
 		self.t_w_acc = T.dscalar('w_acc')
-		self.t_Qi1 = T.col('Qi1')
+		self.t_Qi1 = T.dmatrix('Qi1')
 		self.t_mu = theano.shared(mu.flatten().reshape(1, -1), broadcastable = (True, False))
-		self.ell = -40.0
+		self.ell = -20.0
 
 		self.t_parameters = T.dvector('parameters')
 
@@ -59,21 +60,34 @@ class Agent(object):
 
 	def build_variables(self):
 		self.t_c0 = self.cs * self.t_ei1[0]**2
-		self.t_Q0 = self.kappa * T.sqrt(self.t_ei2[0]) + self.delta * self.t_xi_i
+		self.t_Q0 = 0.64145697 * T.log(self.t_ei2[0]+0.04650573)+1.97937449 + self.delta * self.t_xi_i
+		self.t_grad_Qe0 = T.grad(T.mean(self.t_Q0), self.t_ei2)
 		
-		self.t_t0 = T.dot(self.t_ai, T.transpose(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_mu)))))
-		self.t_t0_exp = T.dot(self.t_w, T.transpose(self.t_t0)) / self.t_w_acc
+#		self.t_t0 = T.dot(self.t_ai, T.transpose(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_mu)))))
+		self.t_t0 = self.t_ai[0] + self.t_ai[1]*(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_ai[2])))) + \
+                            self.t_ai[3] * (self.t_Qi1-self.t_ai[2])*(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_ai[2]))))
+		self.t_t0_exp = T.dot(self.t_w, self.t_t0) / self.t_w_acc
 
-		self.t_sysval0 = 1.0 / (1.0 + T.exp(-100*(self.t_Qi1 - 1.0)))
+		self.t_sysval0 = 1.0 / (1.0 + T.exp(-50*(self.t_Qi1 - 1.0)))
 		self.t_sysval0_exp = T.dot(self.t_w, self.t_sysval0) / self.t_w_acc
 
+		self.t_sse_pi0 = self.t_t0 - self.t_c0
+		self.t_sse_pi0_exp = self.t_t0_exp - self.t_c0
+
+		# utility of sse
+		self.a = 1.0 / (1.0 - T.exp(-self.ucoeff))
+		self.b = self.a
+		self.t_sse_util0 = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0))
+		self.t_sse_util0_exp = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0_exp))
+#		self.t_sse_util0 = T.flatten(self.t_sse_pi0)
+#		self.t_sse_util0_exp = T.flatten(self.t_sse_pi0_exp)
 		
 		# derivatives
 
-		self.t_grad_tQ0 = T.grad(self.t_t0[0], self.t_Qi1)
+		self.t_grad_tQ0 = T.grad(self.t_t0[0,0], self.t_Qi1)
 		self.t_grad_tQ0_exp = T.dot(self.t_w, self.t_grad_tQ0) / self.t_w_acc
 
-		self.t_grad_ta0 = T.grad(self.t_t0[0], self.t_ai)
+		self.t_grad_ta0 = T.grad(self.t_t0[0,0], self.t_ai)
 		self.t_grad_ta0_exp = T.dot(self.t_w, self.t_grad_ta0) / self.t_w_acc
 
 		self.t_grad_VQ0 = T.grad(self.t_sysval0[0,0], self.t_Qi1)
@@ -90,6 +104,10 @@ class Agent(object):
 	def Q(self):
 
 		self.t_Q = theano.clone(self.t_Q0, replace = {self.t_ei2: self.t_e}, strict = False)
+
+	def grad_Q_e(self):
+		
+		self.t_grad_Q_e = theano.clone(self.t_grad_Qe0, replace = {self.t_Q0:self.t_Q, self.t_ei2:self.t_e}, strict = False)
 
 	def transfer(self):
 		
@@ -121,7 +139,8 @@ class Agent(object):
 
 	def exp_grad_transfer_a(self):
 
-		self.t_grad_tra_exp = T.dot(self.t_w, self.t_grad_tra)
+#		self.t_grad_tra_exp = T.dot(self.t_w, self.t_grad_tra)
+		self.t_grad_tra_exp = theano.clone(self.t_grad_ta0_exp, replace= {self.t_grad_ta0: self.t_grad_tra}, strict = False)
 
 	def grad_sysval_Q(self):
 
@@ -129,15 +148,25 @@ class Agent(object):
 
 	def exp_grad_sysval_Q(self):
 
-		self.t_grad_VQ_exp = T.dot(self.t_w, self.t_grad_VQ)
+#		self.t_grad_VQ_exp = T.dot(self.t_w, self.t_grad_VQ)
+		self.t_grad_VQ_exp = theano.clone(self.t_gard_VQ0_exp, replace = {self.t_sysval0:self.t_sysval}, strict = False)
+
+	def sse_pi(self):
+
+		self.t_sse_pi  = theano.clone(self.t_sse_pi0, replace = {self.t_t0: self.t_tr, self.t_c0: self.t_cost}, strict = False)
+
+	def exp_sse_pi(self):
+
+		self.t_sse_pi_exp = theano.clone(self.t_sse_pi0_exp, replace = {self.t_t0_exp:self.t_tr_exp, self.t_c0: self.t_cost}, strict = False)
 
 	def sse_utility(self):
 
-		self.t_sse_util = self.t_tr - self.t_cost
-
+		self.t_sse_util = theano.clone(self.t_sse_util0, replace = {self.t_sse_pi0: self.t_sse_pi}, strict = False)
+#		self.t_sse_util = self.t_tr - self.t_cost
 	def exp_sse_utility(self):
 
-		self.t_sse_util_exp = self.t_tr_exp - self.t_cost
+		self.t_sse_util_exp = theano.clone(self.t_sse_util0_exp, replace = {self.t_sse_pi0_exp: self.t_sse_pi_exp}, strict = False)
+#		self.t_sse_util_exp  = self.t_tr_exp - self.t_cost
 
 	def build_sse_opt_problem(self):
 
@@ -145,7 +174,7 @@ class Agent(object):
 		self.sse_opt_prob = ConstrainedOptimizationProblem(self.N, self.t_e, self.t_ai, 
 												-self.t_sse_util_exp[0],
 												t_g,
-												t_gl = 0.1,
+												t_gl = 0.0,
 												t_gu = POSITIVE_INFINITY,
 												t_xl = 0.0,
 												t_xu = 1.0,
@@ -161,9 +190,9 @@ class Agent(object):
 		res_grad_p_x   = np.array(np.zeros(self.M))
 		#do multiple restarts 
 
-		for ran in range(self.M + 1):
-			lb = (ran + 0.0) / (self.M + 1.0)
-			ub = (ran + 1.0) / (self.M + 1.0)
+		for ran in range(40):
+			lb = (ran + 0.0) / 40.0
+			ub = (ran + 1.0) / 40.0
 			x0 = np.random.uniform(lb, ub, 1)
 			for i in range(self.N):
 				p0 = np.zeros(self.N)
@@ -189,11 +218,13 @@ class Agent(object):
 		self.exp_transfer()
 		self.system_value()
 		self.exp_system_value()
+		self.sse_pi()
+		self.exp_sse_pi()
 		self.sse_utility()
 		self.exp_sse_utility()
 		self.build_sse_opt_problem()
 
-
+		self.grad_Q_e()
 		self.grad_transfer_quality()
 		self.exp_grad_transfer_quality()
 
@@ -213,6 +244,8 @@ class Agent(object):
 		self.sysval_exp_compiled   = function([self.t_e, self.t_w, self.t_xi_i, self.t_w_acc], self.t_sysval_exp)
 		self.sse_util_compiled     = function([self.t_e, self.t_ai, self.t_xi_i], self.t_sse_util)
 		self.sse_util_exp_compiled = function([self.t_e, self.t_ai, self.t_w, self.t_xi_i, self.t_w_acc], self.t_sse_util_exp)
+
+		self.grad_Qe_compiled      = function([self.t_e, self.t_xi_i], self.t_grad_Q_e)
 
 		self.grad_trQ_compiled     = function([self.t_e, self.t_ai, self.t_xi_i], self.t_grad_trQ)
 

@@ -11,6 +11,23 @@ class Principal(object):
 		# 	pass
 		# else:
 		# self.agent()
+		self.t_se_pi = self.agent.t_sysval - self.agent.t_tr
+		self.t_se_pi_exp = self.agent.t_sysval_exp - self.agent.t_tr_exp
+
+		# utility of se
+                self.c = 2
+                self.a = 1.0 / (1.0 - T.exp(-self.c))
+                self.b = self.a
+                self.t_se_util = T.flatten(self.a - self.b * T.exp(-self.c * self.t_se_pi))
+                self.t_se_util_exp = T.flatten(self.a - self.b * T.exp(-self.c * self.t_se_pi_exp))
+
+		self.t_grad_se_util_sysval = T.grad(self.t_se_util[0], self.agent.t_sysval)
+		self.t_grad_se_util_sysval_exp = T.dot(self.agent.t_w, self.t_grad_se_util_sysval) / self.agent.t_w_acc
+
+		self.grad_se_util_sysval_compiled = function([self.agent.t_e, self.agent.t_ai, self.agent.t_xi_i], self.t_grad_se_util_sysval)
+		self.grad_se_util_sysval_exp_compiled = function([self.agent.t_e, self.agent.t_ai, \
+			self.agent.t_w, self.agent.t_xi_i, self.agent.t_w_acc], self.t_grad_se_util_sysval_exp)
+
 
 
 	def neg_se_obj(self, param, e, g_x, others):
@@ -47,9 +64,11 @@ class Principal(object):
 		exp_trQ = np.dot(weights, arr1) / w_acc
 		exp_tra = np.dot(weights, arr2) / w_acc
 		exp_VQ  = np.dot(weights, arr3) / w_acc
-
-		self.se_obj_jacobian = exp_tra - (exp_VQ - exp_trQ) * g_x * self.agent.kappa 
-
+		assert self.agent.grad_Qe_compiled(np.array(e).flatten(), others[1]).flatten() != np.inf
+		temp = exp_tra - (exp_VQ - exp_trQ) * g_x * self.agent.grad_Qe_compiled(np.array(e).flatten(), others[1])
+#		print self.grad_se_util_sysval_compiled(np.array(e).flatten(), param, np.array([[1]]))
+#		self.se_obj_jacobian = self.grad_se_util_sysval_exp_compiled(np.array(e).flatten(), param, others[0], others[1], others[2]) * temp
+		self.se_obj_jacobian = temp
 		return np.array(self.se_obj_jacobian).flatten()
 
 	def optimize_contract(self, others, restarts = 10):
@@ -68,9 +87,9 @@ class Principal(object):
 
 		nvar = M
 
-		bnds = ([(1.0e-6, .7)]*nvar)
+		bnds = ([(0.0, 1.0), (0.0, 1.5), (0.8,3.5), (0.0, 1.0)])
 
-		a0 = np.random.uniform(1.0e-6, 0.7, nvar)
+		a0 = np.array([np.random.uniform(0.0, 1.0), np.random.uniform(0.0, 1.5), np.random.uniform(0.8, 3.5), np.random.uniform(0.0, 1.0)])
 
 		self.sse_eff, self.sse_obj, self.g_p_obj, self.g_p_x = self.agent.solve_sse_opt_prob(a0, others)
 
@@ -81,13 +100,12 @@ class Principal(object):
 				'jac':lambda x: -self.jac_neg_se_obj(x, self.sse_eff, self.g_p_x, others)}]
 
 
-		for r in restarts:
-			print r
+		for r in range(restarts):
 			res = opt.minimize(self.neg_se_obj, x0 = a0, args=(self.sse_eff, self.g_p_x, others), method = 'slsqp', 
 								jac =  self.jac_neg_se_obj, constraints = cons, 
 								options={'ftol':1.0e-6, 'maxiter':100, 'disp':False}, bounds = bnds)
 
-			a0 = np.random.uniform(1.0e-6, 0.7, nvar)
+			a0 = np.array([np.random.uniform(0.0, 1.0), np.random.uniform(0.0, 1.5), np.random.uniform(0.8, 3.5), np.random.uniform(0.0, 1.0)])
 
 			if res.fun < compare and res.status == 0 and res.success == True:
 				compare = res.fun
@@ -100,14 +118,13 @@ class Principal(object):
 		result_dic['sse_effort'] = agent_eff
 		result_dic['sse_transfer'] = self.agent.tr_exp_compiled(agent_eff, res.x, *others)
 		result_dic['sys_quality']  = np.array(np.mean(self.agent.Q_compiled(agent_eff, others[1]), axis = 0)[0]).flatten()
-
 		return result_dic
 	
 
 
 if __name__ == '__main__':
 	from mpi4py	import MPI
-	number_opt = 8
+	number_opt = 100
 	comm = MPI.COMM_WORLD
 	rank = comm.rank
 	size = comm.size
@@ -115,9 +132,9 @@ if __name__ == '__main__':
 	print size
 	if rank == 0:
 		N                     = 1
-		kappa                 = np.array([1.3])
+		ucoeff                = 2
 		delta                 = np.array([0.2])
-		cs                    = np.array([0.5])
+		cs                    = np.array([0.3])
 		M                     = 6
 		ncoloc                = 1000
 		mu                    = np.linspace(0.5, 1.3, M)
@@ -127,7 +144,7 @@ if __name__ == '__main__':
 		weights               = weights.reshape(1, -1)
 		others                = [weights, quads_bcast, w_acc]
 
-		subsys = Agent(N, kappa, delta, cs, M, mu, qvals, ncoloc)
+		subsys = Agent(N, ucoef, delta, cs, M, mu, qvals, ncoloc)
 		subsys()
 		sys = Principal(subsys)
 
@@ -169,9 +186,9 @@ if __name__ == '__main__':
 	quads_bcast = comm.bcast(quads_bcast, root = 0)
 	others = comm.bcast(others, root = 0)
 	sys = comm.bcast(sys, root = 0)
+
 	results_all = [sys.optimize_contract(others, restarts = jobs)]
 	results_all = comm.gather(results_all, root = 0)
-
 	if rank == 0:
 		final_result = results_all[np.argmax([results_all[i][0]['se_obj'] for i in range(size)])]
 		with open('test.pickle', 'wb') as myfile:

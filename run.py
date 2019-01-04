@@ -1,0 +1,103 @@
+from agent import *
+from principal import *
+import pickle
+from mpi4py	import MPI
+
+number_opt = 8
+comm = MPI.COMM_WORLD
+rank = comm.rank
+size = comm.size
+print rank
+print size
+if rank == 0:
+	N                     = 1
+	ucoeff                = 2.0
+	delta                 = np.array([0.1])
+	cs                    = np.array([0.4])
+	M                     = 4
+	ncoloc                = 1000
+	mu                    = np.linspace(1.0, 2.1, M)
+	qvals                 = np.array([1.0])
+	quads, weights, w_acc = roots_hermitenorm(ncoloc, mu=True)
+	quads_bcast           = np.array([quads]*1).T
+	weights               = weights.reshape(1, -1)
+	others                = [weights, quads_bcast, w_acc]
+
+	subsys = Agent(N, ucoeff, delta, cs, M, mu, qvals, ncoloc)
+	subsys()
+	system = Principal(subsys)
+
+
+
+	jobs = list(range(number_opt))
+	jobs = split(jobs, size)
+
+else:
+	N           = None
+	kappa       = None
+	delta       = None
+	cs          = None
+	M           = None
+	ncoloc      = None
+	mu          = None
+	qvals       = None
+	quads       = None
+	weights     = None
+	w_acc       = None
+	quads_bcast = None
+	others      = None
+	sys         = None
+	jobs        = None
+
+results_all = []
+jobs = comm.scatter(jobs, root=0)
+
+N = comm.bcast(N, root = 0)
+kappa = comm.bcast(kappa, root = 0)
+delta = comm.bcast(delta, root = 0)
+cs = comm.bcast(cs, root = 0)
+M = comm.bcast(M, root = 0)
+ncoloc = comm.bcast(ncoloc, root = 0)
+mu = comm.bcast(mu, root = 0)
+qvals = comm.bcast(qvals, root = 0)
+quads = comm.bcast(quads, root = 0)
+weights = comm.bcast(weights, root = 0)
+w_acc = comm.bcast(w_acc, root = 0)
+quads_bcast = comm.bcast(quads_bcast, root = 0)
+others = comm.bcast(others, root = 0)
+sys = comm.bcast(sys, root = 0)
+
+results_all = [sys.optimize_contract(others, restarts = jobs)]
+results_all = comm.gather(results_all, root = 0)
+if rank == 0:
+	final_result = results_all[np.argmax([results_all[i][0]['se_obj'] for i in range(size)])]
+	with open('result.pickle', 'wb') as myfile:
+		pickle.dump((results_all, final_result), myfile)
+
+
+
+
+"""
+number_opt = 80
+N                     = 1
+ucoeff                = 2.0
+delta                 = np.array([0.1])
+cs                    = np.array([0.4])
+M                     = 4
+ncoloc                = 1000
+mu                    = np.linspace(1.0, 2.1, M)
+qvals                 = np.array([1.0])
+quads, weights, w_acc = roots_hermitenorm(ncoloc, mu=True)
+quads_bcast           = np.array([quads]*1).T
+weights               = weights.reshape(1, -1)
+others                = [weights, quads_bcast, w_acc]
+subsys = Agent(N, ucoeff, delta, cs, M, mu, qvals, ncoloc)
+subsys()
+system = Principal(subsys)
+results_all = []
+results_all.append(system.optimize_contract(others, restarts = number_opt))
+filename = sys.argv[1:][0]
+print filename
+with open(filename, 'wb') as myfile:
+	pickle.dump(results_all, myfile)
+"""

@@ -1,0 +1,17 @@
+#!/bin/sh -l
+
+#PBS -V
+#PBS -q ibilion
+#PBS -l nodes=1:ppn=20,naccesspolicy=singleuser
+#PBS -l walltime=03:00:00
+#PBS -N HHBAH
+#PBS -o /home/ssafarkh/dpasgp-master/ieee/HHBAH/output.out
+#PBS -e /home/ssafarkh/dpasgp-master/ieee/HHBAH/logfile.log
+source /home/ssafarkh/dpasgp-master/setup_env.sh 
+source /home/ssafarkh/dpasgp-master/ieee/setup_env.sh
+module load utilities
+module load parafly
+cd /home/ssafarkh/dpasgp-master/ieee/HHBAH
+rm params.txt.completed
+time ParaFly -c params.txt -CPU 20 -failed_cmds rerun.txt
+#time mpiexec python2.7 run.py
