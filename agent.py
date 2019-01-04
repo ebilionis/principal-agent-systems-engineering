@@ -5,8 +5,8 @@ from theano import function
 import theano
 from theano.tensor.shared_randomstreams import RandomStreams
 import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+#matplotlib.use('TkAgg')
+#import matplotlib.pyplot as plt
 import numpy as np
 from dpaspgp import *
 from scipy.special import roots_hermitenorm
@@ -21,7 +21,7 @@ def split(container, count):
 
 
 class Agent(object):
-	def __init__(self, N, ucoeff, delta, cs, M, mu, qvals, ncoloc):
+	def __init__(self, N, ucoeff, delta, cs, M, mu, qvals, ncoloc, Q_co):
 		self.N = N
 		self.ucoeff = ucoeff
 		self.delta = delta
@@ -52,6 +52,7 @@ class Agent(object):
 		self.t_Qi1 = T.dmatrix('Qi1')
 		self.t_mu = theano.shared(mu.flatten().reshape(1, -1), broadcastable = (True, False))
 		self.ell = -20.0
+		self.Q_co = Q_co
 
 		self.t_parameters = T.dvector('parameters')
 
@@ -60,7 +61,7 @@ class Agent(object):
 
 	def build_variables(self):
 		self.t_c0 = self.cs * self.t_ei1[0]**2
-		self.t_Q0 = 0.64145697 * T.log(self.t_ei2[0]+0.04650573)+1.97937449 + self.delta * self.t_xi_i
+		self.t_Q0 = self.Q_co[0] * T.log(self.t_ei2[0]+self.Q_co[1]) + self.Q_co[2] + self.delta * self.t_xi_i
 		self.t_grad_Qe0 = T.grad(T.mean(self.t_Q0), self.t_ei2)
 		
 #		self.t_t0 = T.dot(self.t_ai, T.transpose(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_mu)))))
@@ -77,10 +78,12 @@ class Agent(object):
 		# utility of sse
 		self.a = 1.0 / (1.0 - T.exp(-self.ucoeff))
 		self.b = self.a
-		self.t_sse_util0 = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0))
-		self.t_sse_util0_exp = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0_exp))
-#		self.t_sse_util0 = T.flatten(self.t_sse_pi0)
-#		self.t_sse_util0_exp = T.flatten(self.t_sse_pi0_exp)
+		if self.ucoeff != 0.0:
+			self.t_sse_util0 = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0))
+			self.t_sse_util0_exp = T.flatten(self.a - self.b * T.exp(-self.ucoeff * self.t_sse_pi0_exp))
+		else:
+			self.t_sse_util0 = T.flatten(self.t_sse_pi0)
+			self.t_sse_util0_exp = T.flatten(self.t_sse_pi0_exp)
 		
 		# derivatives
 
@@ -188,6 +191,7 @@ class Agent(object):
 		res_obj        = np.array(np.zeros(self.N))
 		res_grad_p_obj = np.array(np.zeros(self.M))
 		res_grad_p_x   = np.array(np.zeros(self.M))
+		
 		#do multiple restarts 
 
 		for ran in range(40):

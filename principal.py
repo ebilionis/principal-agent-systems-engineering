@@ -100,7 +100,7 @@ class Principal(object):
 				'jac':lambda x: -self.jac_neg_se_obj(x, self.sse_eff, self.g_p_x, others)}]
 
 
-		for r in range(restarts):
+		for r in range(*restarts):
 			res = opt.minimize(self.neg_se_obj, x0 = a0, args=(self.sse_eff, self.g_p_x, others), method = 'slsqp', 
 								jac =  self.jac_neg_se_obj, constraints = cons, 
 								options={'ftol':1.0e-6, 'maxiter':100, 'disp':False}, bounds = bnds)
