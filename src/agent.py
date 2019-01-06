@@ -51,9 +51,8 @@ class Agent(object):
 		self.t_w_acc = T.dscalar('w_acc')
 		self.t_Qi1 = T.dmatrix('Qi1')
 		self.t_mu = theano.shared(mu.flatten().reshape(1, -1), broadcastable = (True, False))
-		self.ell = -200.0
+		self.ell = -100.0
 		self.Q_co = Q_co
-		print self.ell
 
 		self.t_parameters = T.dvector('parameters')
 
