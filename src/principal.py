@@ -74,7 +74,7 @@ class Principal(object):
 		return np.array(self.se_obj_jacobian).flatten()
 
 	def optimize_contract(self, others, restarts =10):
-		
+
 		N = self.agent.N
 		M = self.agent.M
 
@@ -103,7 +103,7 @@ class Principal(object):
 
 
 		for r in restarts:
-			np.random.seed(r)
+
 			res = opt.minimize(self.neg_se_obj, x0 = a0, args=(self.sse_eff, self.g_p_x, others), method = 'slsqp', 
 								jac =  self.jac_neg_se_obj, constraints = cons, 
 								options={'ftol':1.0e-6, 'maxiter':100, 'disp':False}, bounds = bnds)

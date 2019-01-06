@@ -3,10 +3,8 @@ sys.path.append('../')
 from src import *
 import pickle
 from mpi4py	import MPI
-import numpy as np
 
-
-number_opt = 20	# Set numer of restarts
+number_opt = 40	# Set numer of restarts
 comm = MPI.COMM_WORLD
 rank = comm.rank
 size = comm.size
@@ -15,9 +13,9 @@ if rank == 0:
 	# Set N, q_coeff, ucoeff, delta, cs
 	N                     = 1  									 # Number of agents
 	q_coeff 			  = [0., 1.2] # Coefficients to define the quality function
-	ucoeff                = 0.0									 # Utility coefficient (RA, RN, RP)
+	ucoeff                = .0									 # Utility coefficient (RA, RN, RP)
 	delta                 = np.array([0.1])						 # Uncertainty in the quality
-	cs                    = np.array([0.4])						 # The coefficient of the cost
+	cs                    = np.array([0.2])						 # The coefficient of the cost
 
 
 
@@ -32,7 +30,7 @@ if rank == 0:
 
 	jobs = list(range(number_opt))
 	jobs = split(jobs, size)
-	np.random.seed(rank**2)
+	print jobs
 
 else:
 	N           = None
@@ -51,7 +49,6 @@ else:
 	others      = None
 	sys         = None
 	jobs        = None
-	np.random.seed(rank**2)
 
 results_all = []
 jobs 		= comm.scatter(jobs, root=0)
@@ -88,4 +85,3 @@ if rank == 0:
 			all_res = pickle.load(myfile)[0]
 	final_res = all_res[np.argmax([all_res[i][0]['se_obj'] for i in range(size)])]
 	print final_res
-
