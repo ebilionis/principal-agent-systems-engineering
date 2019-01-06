@@ -51,7 +51,7 @@ class Agent(object):
 		self.t_w_acc = T.dscalar('w_acc')
 		self.t_Qi1 = T.dmatrix('Qi1')
 		self.t_mu = theano.shared(mu.flatten().reshape(1, -1), broadcastable = (True, False))
-		self.ell = -20.0
+		self.ell = -100.0
 		self.Q_co = Q_co
 
 		self.t_parameters = T.dvector('parameters')
@@ -61,7 +61,8 @@ class Agent(object):
 
 	def build_variables(self):
 		self.t_c0 = self.cs * self.t_ei1[0]**2
-		self.t_Q0 = self.Q_co[0] * T.log(self.t_ei2[0]+self.Q_co[1]) + self.Q_co[2] + self.delta * self.t_xi_i
+		# self.t_Q0 = self.Q_co[0] * T.log(self.t_ei2[0]+self.Q_co[1]) + self.Q_co[2] + self.delta * self.t_xi_i
+		self.t_Q0 = self.Q_co[0] + self.Q_co[1] * self.t_ei2[0] + self.delta * self.t_xi_i
 		self.t_grad_Qe0 = T.grad(T.mean(self.t_Q0), self.t_ei2)
 		
 #		self.t_t0 = T.dot(self.t_ai, T.transpose(1.0 / (1.0 + T.exp(self.ell * (self.t_Qi1 - self.t_mu)))))

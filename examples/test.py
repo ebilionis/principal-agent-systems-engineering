@@ -1,7 +1,9 @@
-from agent import *
-from principal import *
+import sys
+sys.path.append('../')
+from src import *
 import pickle
 from mpi4py	import MPI
+
 
 number_opt = 20	# Set numer of restarts
 comm = MPI.COMM_WORLD
@@ -84,3 +86,4 @@ if rank == 0:
 			all_res = pickle.load(myfile)[0]
 	final_res = all_res[np.argmax([all_res[i][0]['se_obj'] for i in range(size)])]
 	print final_res
+
