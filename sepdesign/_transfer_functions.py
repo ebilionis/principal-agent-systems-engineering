@@ -59,29 +59,20 @@ class RequirementTransferFunction(TransferFunction):
     """
     A transfer function that pays a fixed amount if a requirement is met.
 
-    :param req: The requirement (immutable, default one).
     :param t_q: The symbolic variable for quality (created if None)
     :param t_a: The symbolic variable for the parameters (created if None)
     :param gamma:   The step function is represented by a sigmoid. This
                     parameter gives the sharpness of the sigmoid. (immutable)
     """
 
-    def __init__(self, req=1.0, t_q=None, t_a=None, gamma=10.):
-        self._req = req
+    def __init__(self, t_q=None, t_a=None, gamma=10.):
         self._gamma = gamma
         if t_q is None:
             t_q = T.dscalar('q')
         if t_a is None:
             t_a = T.dvector('a')
-        t_t = t_a[0] / (1. + T.exp(gamma * (req - t_q)))
-        super(RequirementTransferFunction, self).__init__(t_q, 1, t_a, t_t)
-
-    @property
-    def req(self):
-        """
-        Get the requirement.
-        """
-        return self.req
+        t_t = t_a[0] / (1. + T.exp(gamma * (t_a[1] - t_q)))
+        super(RequirementTransferFunction, self).__init__(t_q, 2, t_a, t_t)
 
     @property
     def gamma(self):
@@ -94,6 +85,6 @@ class RequirementTransferFunction(TransferFunction):
 if __name__ == '__main__':
     tr = RequirementTransferFunction()
     tr.compile()
-    a = [0.3]
+    a = [0.3, 1.]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
-        print 'tr(%1.2f, [%1.2f]) = %1.2f' % (q, a[0], tr(q, a))
+        print 'tr(%1.2f, [%1.2f, %1.2f]) = %1.2f' % (q, a[0], a[1], tr(q, a))
