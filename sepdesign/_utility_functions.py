@@ -3,6 +3,9 @@ Utility functions
 
 """
 
+
+
+_all__ = ["UtilityFunction", "ExponentialUtilityFunction"]
 import theano
 import theano.tensor as T
 from _function import Function
@@ -24,6 +27,13 @@ class UtilityFunction(Function):
     @property
     def t_util(self):
         return self.t_f
+
+
+
+class ExponentialUtilityFunction(UtilityFunction):
+    """
+    This is the exponential utility function for different risk behaviors.
+    """
 
 
 class RiskAverseUtilityFunction(UtilityFunction):
