@@ -4,7 +4,6 @@ Utility functions.
 """
 
 
-
 _all__ = ["UtilityFunction", "ExponentialUtilityFunction"]
 import theano
 import theano.tensor as T
@@ -77,23 +76,4 @@ if __name__ == '__main__':
 
     plt.legend()
     plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
