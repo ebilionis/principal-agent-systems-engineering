@@ -13,7 +13,7 @@ import numpy as np
 from _function import Function
 from _quality_functions import QualityFunction
 from _cost_functions import CostFunction
-# from _utility_functions import UtilityFunction # TODO: Remove comment
+from _utility_functions import UtilityFunction
 
 
 class AgentType(object):
@@ -54,6 +54,21 @@ class AgentType(object):
         t_pi = t_t_comp_q - t_c
         return Function([t_e, t_xi, t_a], t_pi)
 
+    def get_util(self, t):
+        """
+        Get the utility function of an agent.
+        We will just return a Function of the right form.
+
+        :param t:   A transfer function.
+        """
+        return self.u.compose(self.get_pi(t))
+        t_e = self.q.t_e
+        t_xi = self.q.t_xi
+        t_a = t.t_a
+        pi = self.get_pi(t)
+        t_u = theano.clone(self.u.t_util, replace={self.u.t_pi: pi.t_f})
+        return Function([t_e, t_xi, t_a], t_pi)
+
     def _get_expectation(self, fun, degree=100):
         """
         Get the expectation of the function ``fun``.
@@ -82,6 +97,12 @@ class AgentType(object):
         """
         return self._get_expectation(self.get_pi(t),degree=degree)
 
+    def get_exp_util(self, t, degree=100):
+        """
+        Get the expected utility of the payoff.
+        """
+        return self._get_expectation(self.get_util(t), degree=degree)
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -91,24 +112,31 @@ if __name__ == '__main__':
     import numpy as np
     from _quality_functions import *
     from _cost_functions import *
+    from _utility_functions import *
     from _transfer_functions import *
 
     # Create an agent of a specific type
-    agent_type = AgentType(LinearQualityFunction(1.5, 0.01),
-                           LinearCostFunction(0.1),
-                           None) # TODO: Fix when utility ready
+    agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
+                           QuadraticCostFunction(0.1),
+                           ExponentialUtilityFunction(2.0))
 
     # Create a transfer function
     t = RequirementPlusIncentiveTransferFunction()
 
     # Get the payoff of the agent as a Function
     pi = agent_type.get_pi(t)
+    # Get the expectation of the payoff
     exp_pi = agent_type.get_exp_pi(t) # Should be the same as pi because of the
                                       # linear quality function with zero mean
                                       # Gaussian noise.
-    # Compile it if you want to evaluate it as a function
+    # Get the utility function
+    u = agent_type.get_util(t)
+    exp_u = agent_type.get_exp_util(t)
+    # Compile all functions
     pi.compile()
     exp_pi.compile()
+    u.compile()
+    exp_u.compile()
     # Let's plot the payoff
     # Set the parameters of the transfer function
     a = [0.05, 0.3, 1., 0.0]
@@ -121,5 +149,24 @@ if __name__ == '__main__':
     ax.plot(es, pis)
     ax.plot(es, exp_pis, '--')
     ax.set_xlabel('$e_i$')
-    ax.set_ylabel(r'$\Pi_i(e_i) | \Xi_i=0$')
+    ax.set_ylabel(r'$\Pi_i$')
+    
+    # Plot a few samples of the utility (for random xi)
+    # I also compute the sampling average to compare to the expectation
+    fig1, ax1 = plt.subplots()
+    s_exp_us = np.zeros(es.shape)
+    num_samples = 10 # Increase this number of test accuracy of quadrature rule
+                     # *** BILIONIS TESTED THIS *** 
+    for i in range(num_samples):
+        xi = np.random.randn(1)
+        us = np.array([u(e, xi, a) for e in es])
+        s_exp_us += us[:, 0]
+        if i <= 5:
+            ax1.plot(es, us, lw=1, color=sns.color_palette()[1])
+    s_exp_us /= (1.0 * num_samples)
+    ax1.plot(es, s_exp_us, '--', lw=2, color=sns.color_palette()[0]) 
+    exp_us = np.array([exp_u(e, a) for e in es])
+    ax1.plot(es, exp_us, ':', lw=2, color=sns.color_palette()[2])
+    ax1.set_xlabel('$e_i$')
+    ax1.set_ylabel(r'$U_i(\Pi_i)$')
     plt.show()

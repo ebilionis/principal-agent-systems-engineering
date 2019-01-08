@@ -25,19 +25,16 @@ class UtilityFunction(Function):
     def t_pi(self):
         return self.t_x[0]
 
-
     @property
     def t_util(self):
         return self.t_f
-
 
 
 class ExponentialUtilityFunction(UtilityFunction):
     """
     This is the exponential utility function for different risk behaviors.
     """
-    def __init__(self, t_pi=None, risk_preference=0.0):
-
+    def __init__(self, risk_preference=0.0, t_pi=None):
         if t_pi == None:
             t_pi = T.dvector('pi')
         if risk_preference != 0.0:
@@ -46,9 +43,7 @@ class ExponentialUtilityFunction(UtilityFunction):
             t_util = a - b * T.exp(risk_preference * t_pi)
         else:
             t_util = t_pi
-        
         super(ExponentialUtilityFunction, self).__init__(t_pi, t_util)
-
 
 
 if __name__ == '__main__':
