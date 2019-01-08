@@ -16,7 +16,6 @@ class UtilityFunction(Function):
     def __init__(self, t_pi, t_util):
         super(UtilityFunction, self).__init__([t_pi], t_util)
 
-
     @property
     def t_pi(self):
         return self.t_x[0]
@@ -25,6 +24,7 @@ class UtilityFunction(Function):
     @property
     def t_util(self):
         return self.t_f
+
 
 class RiskAverseUtilityFunction(UtilityFunction):
     """

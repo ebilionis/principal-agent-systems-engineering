@@ -54,7 +54,7 @@ class TransferFunction(Function):
         """
         Get the symbolic variable for the transfer function.
         """
-        return self.t_t
+        return self.t_f
 
     def plot(self, ax, a, qs=None, **kwargs):
         """

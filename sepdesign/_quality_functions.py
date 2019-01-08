@@ -35,7 +35,7 @@ class QualityFunction(Function):
         """
         Get the symbolic variable for the state of nature.
         """
-        return self.t_xi[0]
+        return self.t_x[1]
 
     @property
     def t_q(self):
