@@ -37,57 +37,28 @@ class ExponentialUtilityFunction(UtilityFunction):
     """
     This is the exponential utility function for different risk behaviors.
     """
-
-
-class RiskAverseUtilityFunction(UtilityFunction):
-    """
-    The utiltiy function for risk averse behavior
-    """
-
-    def __init__(self, t_pi=None, risk_intensity = -2.0):
-        if t_pi == None:
-            t_pi = T.dscalar('pi')
-        self.a = 1.0 / (1.0 - T.exp(risk_intensity))
-        self.b = self.a
-        t_util = self.a - self.b * T.exp(risk_intensity * t_pi)
-        super(RiskAverseUtilityFunction, self).__init__(t_pi, t_util)
-
-
-class RiskNeutralUtilityFunction(UtilityFunction):
-    """
-    The utiltiy function for risk neutral behavior
-    """
-
-    def __init__(self, t_pi=None):
-        if t_pi == None:
-            t_pi = T.dscalar('pi')
-        t_util = t_pi
-        super(RiskNeutralUtilityFunction, self).__init__(t_pi, t_util)
-
-
-class RiskProneUtilityFunction(UtilityFunction):
-    """
-    The utiltiy function for risk prone behavior
-    """
-
-    def __init__(self, t_pi=None, risk_intensity = 2):
+    def __init__(self, t_pi=None, risk_preference=0.0):
 
         if t_pi == None:
             t_pi = T.dscalar('pi')
+        if risk_preference != 0.0:
+            a = 1.0 / (1.0 - T.exp(risk_preference))
+            b = a
+            t_util = a - b * T.exp(risk_preference * t_pi)
+        else:
+            t_util = t_pi
+        
+        super(ExponentialUtilityFunction, self).__init__(t_pi, t_util)
 
-        self.a = 1.0 / (1.0 - T.exp(risk_intensity))
-        self.b = self.a
-        t_util = self.a - self.b * T.exp(risk_intensity * t_pi)
-        super(RiskProneUtilityFunction, self).__init__(t_pi, t_util)
 
 
 if __name__ == '__main__':
     import numpy as np
     import matplotlib.pyplot as plt
     pi = np.linspace(0,1, 100)
-    u_averse  = RiskAverseUtilityFunction(risk_intensity=-3)
-    u_neutral = RiskNeutralUtilityFunction()
-    u_prone   = RiskProneUtilityFunction(risk_intensity=3)
+    u_averse  = ExponentialUtilityFunction(risk_preference = -2.0)
+    u_neutral = ExponentialUtilityFunction(risk_preference =  0.0)
+    u_prone   = ExponentialUtilityFunction(risk_preference =  2.0)
 
     u_averse.compile()
     u_neutral.compile()
@@ -109,7 +80,7 @@ if __name__ == '__main__':
     plt.ylabel(r'utility')
 
     plt.legend()
-    plt.savefig('utility.png', dpi = 300)
+    plt.show()
 
 
 
