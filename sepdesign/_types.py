@@ -14,6 +14,7 @@ from _function import Function
 from _quality_functions import QualityFunction
 from _cost_functions import CostFunction
 from _utility_functions import UtilityFunction
+from _transfer_functions import TransferFunction
 
 
 class AgentType(object):
@@ -40,6 +41,7 @@ class AgentType(object):
 
         :param t:   A transfer function.
         """
+        assert isinstance(t, TransferFunction)
         # Extract symbolic variables from quality
         t_e = self.q.t_e
         t_xi = self.q.t_xi
@@ -79,6 +81,7 @@ class AgentType(object):
                     We integrate using a numerical quadrature rule.
         :param degree:  Integrates exactly polynomials of 2 * degree - 1.
         """
+        assert isinstance(fun, Function)
         # Get quadrature rule
         Z, v = np.polynomial.hermite.hermgauss(degree)
         Xi = Z * np.sqrt(2.0)
