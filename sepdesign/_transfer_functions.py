@@ -57,7 +57,8 @@ class TransferFunction(Function):
 
 class RequirementTransferFunction(TransferFunction):
     """
-    A transfer function that pays a fixed amount if a requirement is met.
+    A transfer function that pays a fixed participation amount and then
+    a fixed amount if a requirement is met. It has three (3) parameters.
 
     :param t_q: The symbolic variable for quality (created if None)
     :param t_a: The symbolic variable for the parameters (created if None)
@@ -71,8 +72,8 @@ class RequirementTransferFunction(TransferFunction):
             t_q = T.dscalar('q')
         if t_a is None:
             t_a = T.dvector('a')
-        t_t = t_a[0] / (1. + T.exp(gamma * (t_a[1] - t_q)))
-        super(RequirementTransferFunction, self).__init__(t_q, 2, t_a, t_t)
+        t_t = t_a[0] + t_a[1] / (1. + T.exp(gamma * (t_a[2] - t_q)))
+        super(RequirementTransferFunction, self).__init__(t_q, 3, t_a, t_t)
 
     @property
     def gamma(self):
@@ -82,9 +83,17 @@ class RequirementTransferFunction(TransferFunction):
         return self._gamma
 
 
+class RequirementPlusIncentiveTransferFunction(TransferFunction):
+    """
+    A transfer function that pays a fixed 
+    """
+    pass
+
+
 if __name__ == '__main__':
     tr = RequirementTransferFunction()
     tr.compile()
-    a = [0.3, 1.]
+    a = [0.05, 0.3, 1.]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
-        print 'tr(%1.2f, [%1.2f, %1.2f]) = %1.2f' % (q, a[0], a[1], tr(q, a))
+        print 'tr(%1.2f, [%1.2f, %1.2f, %1.2f]) = %1.2f' \
+                % (q, a[0], a[1], a[2], tr(q, a))
