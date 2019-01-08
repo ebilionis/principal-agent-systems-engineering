@@ -59,8 +59,32 @@ class LinearCostFunction(CostFunction):
         """
         return self._coef
 
+class QuadraticCostFunction(CostFunction):
+    """
+    A Quadratic cost function. Q = c*e^2.
+    param coef: The value of quadratic coefficient.
+    param t_e : The effort symbolic variable. Created from scratch if not
+                    specified.
+    """
+    def __init__(self, coef, t_e = None):
+        if t_e == None:
+            t_e = T.dscalar('e')
+        self._coeff = coef
+        t_c = coef * t_e**2
+        super(QuadraticCostFunction, self).__init__(t_e, t_c)
+
+    @property
+    def coef(self):
+        """
+        Get the coefficient of the linear function.
+        """
+        return self._coef
 
 if __name__ == '__main__':
     c = LinearCostFunction(0.5)
     c.compile()
-    print 'c(0.5) = %1.2f' % c(0.5)
+    print 'Linear cost : c(0.5) = %1.2f' % c(0.5)
+    c = QuadraticCostFunction(0.5)
+    c.compile()
+    print 'Quadratic cost : c(0.5) = %1.3f' % c(0.5)
+
