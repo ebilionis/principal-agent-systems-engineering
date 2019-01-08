@@ -4,7 +4,7 @@ Several cost functions that can be used by agents.
 """
 
 
-__all__ = ['CostFunction', 'LinearCostFunction']
+__all__ = ['CostFunction', 'LinearCostFunction', 'QuadraticCostFunction']
 
 
 import theano
@@ -59,6 +59,7 @@ class LinearCostFunction(CostFunction):
         """
         return self._coef
 
+
 class QuadraticCostFunction(CostFunction):
     """
     A Quadratic cost function. Q = c*e^2.
@@ -79,6 +80,7 @@ class QuadraticCostFunction(CostFunction):
         Get the coefficient of the linear function.
         """
         return self._coef
+
 
 if __name__ == '__main__':
     c = LinearCostFunction(0.5)
