@@ -8,6 +8,7 @@ __all__ = ['AgentType']
 
 
 import theano
+import theano.tensor as T
 from _function import Function
 from _quality_functions import QualityFunction
 from _cost_functions import CostFunction
@@ -52,6 +53,25 @@ class AgentType(object):
         t_pi = t_t_comp_q - t_c
         return Function([t_e, t_xi, t_a], t_pi)
 
+    def _get_expectation(self, fun, t):
+        """
+        Get the expectation of the function ``fun``.
+
+        :param fun: The function fun is an instance of a ``Function''.
+                    The assumption is that fun.t_x == [t_e, t_xi, t_a] and that
+                    we wish to integrate over t_xi which is a N(0,1) r.v.
+                    We integrate using a numerical quadrature rule.
+        """
+        # Symbolic quadrature points
+        t_Xi = T.dvector('Xi')
+        # Symbolic quadrature weights
+        t_w = T.dvector('w')
+        t_e = fun.t_x[0]
+        t_xi = fun.t_x[1]
+        t_a = fun.t_x[2]
+        t_fun = theano.clone(fun.t_f, replace={t_xi: t_Xi})
+        return Function([t_e, t_Xi, t_a], t_fun)
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -73,13 +93,17 @@ if __name__ == '__main__':
 
     # Get the payoff of the agent as a Function
     pi = agent_type.get_pi(t)
+    
+    #exp_pi = agent_type._get_expectation(pi, t)
+    
+    #quit()
     # Compile it if you want to evaluate it as a function
     pi.compile()
     # Let's plot the payoff
     # Set the parameters of the transfer function
     a = [0.05, 0.3, 1., 0.0]
     # Set the random state of nature to a value
-    xi = 0.0
+    xi = [0.0]
     es = np.linspace(0, 1, 100)
     pis = np.array([pi(e, xi, a) for e in es])
     fig, ax = plt.subplots()

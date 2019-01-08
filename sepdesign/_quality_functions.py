@@ -59,7 +59,8 @@ class LinearQualityFunction(QualityFunction):
         if t_e is None:
             t_e = T.dscalar('e')
         if t_xi is None:
-            t_xi = T.dscalar('xi')
+            t_xi = T.dvector('xi')  # This is required if you want to
+                                    # symbolically integrate over xi
         t_q = e_coef * t_e + xi_coef * t_xi
         super(LinearQualityFunction, self).__init__(t_e, t_xi, t_q)
 
@@ -69,5 +70,5 @@ if __name__ == '__main__':
     q = LinearQualityFunction(0.2, 0.1)
     q.compile()
     e = 0.5
-    xi = np.random.randn()
+    xi = np.random.randn(1)
     print 'q(%1.2f, %1.2f) = %1.2f' % (e, xi, q(e, xi))

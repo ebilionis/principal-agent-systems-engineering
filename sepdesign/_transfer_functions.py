@@ -63,7 +63,7 @@ class TransferFunction(Function):
         """
         if qs is None:
             qs = np.linspace(0, 2, 100)
-        ts = np.array([self(q, a) for q in qs])
+        ts = np.array([self([q], a) for q in qs])
         ax.plot(qs, ts, **kwargs)
 
 
@@ -81,7 +81,7 @@ class RequirementTransferFunction(TransferFunction):
     def __init__(self, t_q=None, t_a=None, gamma=50.):
         self._gamma = gamma
         if t_q is None:
-            t_q = T.dscalar('q')
+            t_q = T.dvector('q') # Needs to be vector for numerical integration
         if t_a is None:
             t_a = T.dvector('a')
         t_t = t_a[0] + t_a[1] / (1. + T.exp(gamma * (t_a[2] - t_q)))
@@ -110,7 +110,7 @@ class RequirementPlusIncentiveTransferFunction(TransferFunction):
     def __init__(self, t_q=None, t_a=None, gamma=50.):
         self._gamma = gamma
         if t_q is None:
-            t_q = T.dscalar('q')
+            t_q = T.dvector('q')
         if t_a is None:
             t_a = T.dvector('a')
         t_t = t_a[0] \
@@ -133,14 +133,14 @@ if __name__ == '__main__':
     a1 = [0.05, 0.3, 1.]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
         print 'tr(%1.2f, [%1.2f, %1.2f, %1.2f]) = %1.2f' \
-                % (q, a1[0], a1[1], a1[2], tr(q, a1))
+                % (q, a1[0], a1[1], a1[2], tr([q], a1))
 
     trpi = RequirementPlusIncentiveTransferFunction()
     trpi.compile()
     a2 = [0.05, 0.3, 1., 0.6]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
         print 'tr(%1.2f, [%1.2f, %1.2f, %1.2f, %1.2f]) = %1.2f' \
-                % (q, a2[0], a2[1], a2[2], a2[3], trpi(q, a2))
+                % (q, a2[0], a2[1], a2[2], a2[3], trpi([q], a2))
 
     # Let's plot them
     import matplotlib.pyplot as plt
