@@ -26,7 +26,7 @@ class CostFunction(Function):
         """
         Get the symbolic variable for the effort.
         """
-        return self.t_x
+        return self.t_x[0]
 
     @property
     def t_c(self):
