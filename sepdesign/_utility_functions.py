@@ -31,13 +31,12 @@ class RiskAverseUtilityFunction(UtilityFunction):
     The utiltiy function for risk averse behavior
     """
 
-    def __init__(self, t_pi=None):
+    def __init__(self, t_pi=None, risk_intensity = -2):
         if t_pi == None:
-            t_pi = T.dvector('pi')
-        t_util = T.flatten(t_pi)
-        self.a = 1.0 / (1.0 - T.exp(-2))
+            t_pi = T.dscalar('pi')
+        self.a = 1.0 / (1.0 - T.exp(risk_intensity))
         self.b = self.a
-        t_util = T.flatten(self.a - self.b * T.exp(-2 * t_pi))
+        t_util = self.a - self.b * T.exp(risk_intensity * t_pi)
         super(RiskAverseUtilityFunction, self).__init__(t_pi, t_util)
 
 
@@ -46,11 +45,11 @@ class RiskNeutralUtilityFunction(UtilityFunction):
     The utiltiy function for risk neutral behavior
     """
 
-    def __init__(self, t_pi=None):
+    def __init__(self, t_pi=None, risk_intensity = None):
 
         if t_pi == None:
-            t_pi = T.dvector('pi')
-        t_util = T.flatten(t_pi)
+            t_pi = T.dscalar('pi')
+        t_util = t_pi
         super(RiskNeutralUtilityFunction, self).__init__(t_pi, t_util)
 
 
@@ -59,14 +58,14 @@ class RiskProneUtilityFunction(UtilityFunction):
     The utiltiy function for risk prone behavior
     """
 
-    def __init__(self, t_pi=None):
+    def __init__(self, t_pi=None, risk_intensity = 2):
 
         if t_pi == None:
-            t_pi = T.dvector('pi')
+            t_pi = T.dscalar('pi')
 
-        self.a = 1.0 / (1.0 - T.exp(2))
+        self.a = 1.0 / (1.0 - T.exp(risk_intensity))
         self.b = self.a
-        t_util = T.flatten(self.a - self.b * T.exp(2 * t_pi))
+        t_util = self.a - self.b * T.exp(risk_intensity * t_pi)
         super(RiskProneUtilityFunction, self).__init__(t_pi, t_util)
 
 
@@ -74,17 +73,26 @@ if __name__ == '__main__':
     import numpy as np
     import matplotlib.pyplot as plt
     pi = np.linspace(0,1, 100)
-    u_averse  = RiskAverseUtilityFunction()
+    u_averse  = RiskAverseUtilityFunction(risk_intensity=-3)
     u_neutral = RiskNeutralUtilityFunction()
-    u_prone   = RiskProneUtilityFunction()
+    u_prone   = RiskProneUtilityFunction(risk_intensity=3)
 
     u_averse.compile()
     u_neutral.compile()
     u_prone.compile()
 
-    plt.plot(pi, u_averse(pi), label='risk averse')
-    plt.plot(pi, u_neutral(pi), label='risk neutral')
-    plt.plot(pi, u_prone(pi), label='risk prone')
+    ua = []
+    un = []
+    up = []
+    for i in pi:
+        ua += [u_averse(i)]
+        un += [u_neutral(i)]
+        up += [u_prone(i)]
+
+    plt.plot(pi, ua, label='risk averse')
+    plt.plot(pi, un, label='risk neutral')
+    plt.plot(pi, up, label='risk prone')
+
     plt.xlabel(r'$\pi$')
     plt.ylabel(r'utility')
 
