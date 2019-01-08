@@ -1,5 +1,5 @@
 """
-Utility functions
+Utility functions.
 
 """
 
@@ -13,7 +13,10 @@ from _function import Function
 
 class UtilityFunction(Function):
     """
-    An abstract class for the utility functions
+    An abstract class for the utility functions.
+
+    :param t_pi:    A symbolic variable representing the payoff.
+    :param t_util:  TODO Write
     """
 
     def __init__(self, t_pi, t_util):
@@ -41,7 +44,7 @@ class RiskAverseUtilityFunction(UtilityFunction):
     The utiltiy function for risk averse behavior
     """
 
-    def __init__(self, t_pi=None, risk_intensity = -2):
+    def __init__(self, t_pi=None, risk_intensity = -2.0):
         if t_pi == None:
             t_pi = T.dscalar('pi')
         self.a = 1.0 / (1.0 - T.exp(risk_intensity))
@@ -55,8 +58,7 @@ class RiskNeutralUtilityFunction(UtilityFunction):
     The utiltiy function for risk neutral behavior
     """
 
-    def __init__(self, t_pi=None, risk_intensity = None):
-
+    def __init__(self, t_pi=None):
         if t_pi == None:
             t_pi = T.dscalar('pi')
         t_util = t_pi
