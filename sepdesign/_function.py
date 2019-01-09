@@ -56,6 +56,15 @@ class Function(object):
         t_fg = theano.clone(self.t_f, replace={t_x_elm: g.t_f})
         return Function(g.t_x, t_fg)
 
+    def grad(self, t_x_part):
+        """
+        Take the derivative of the function with respect to part of t_x.
+
+        :param t_x_part:    Part of t_x (i.e., one of the items in the list).
+        """
+        t_f_grad = theano.grad(self.t_f, t_x_part)
+        return Function(self.t_x, t_f_grad)
+
 
 if __name__ == '__main__':
     from theano import tensor as T
@@ -90,3 +99,8 @@ if __name__ == '__main__':
     q.compile()
     xi = np.random.randn()
     print 'q(0.4, %1.2f) = %1.2f' % (xi, q(0.5, xi))
+    
+    # Let's test the gradient of the function
+    dqde = q.grad(t_xi)
+    dqde.compile()
+    print 'dq/de(0.4, %1.2f) = %1.2f' % (xi, dqde(0.5, xi))
