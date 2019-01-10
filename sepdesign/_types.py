@@ -136,14 +136,11 @@ class AgentType(object):
         """
         return self._get_expectation(self.get_util(t), degree=degree)
 
-    def __str__(self):
+    def __repr__(self):
         """
         Return a string representation of this object.
         """
-        return 'AgentType(%s, %s, %s, name=%s)' % (str(self.q),
-                                                   str(self.c),
-                                                   str(self.u),
-                                                   self.name)
+        return 'AgentType(%s, %s, %s)' % (str(self.q), str(self.c), str(self.u))
 
 
 if __name__ == '__main__':

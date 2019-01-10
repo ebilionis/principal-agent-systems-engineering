@@ -11,3 +11,4 @@ from _quality_functions import *
 from _transfer_functions import *
 from _utility_functions import *
 from _types import *
+from _agent import *
