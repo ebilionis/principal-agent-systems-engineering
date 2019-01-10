@@ -7,6 +7,7 @@ __all__ = ['PrincipalProblem']
 import theano
 import theano.tensor as T
 from _types import AgentType
+from _agents import Agent
 from _transfer_functions import TransferFunction
 from _individual_rationality import IndividualRationality
 
@@ -54,10 +55,3 @@ class PrincipalProblem(object):
 if __name__ == '__main__':
     pass
 
-
-
-
-
-
-if __name__ == "__main__":
-    
