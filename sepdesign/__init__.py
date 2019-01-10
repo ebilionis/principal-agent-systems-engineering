@@ -12,3 +12,4 @@ from _transfer_functions import *
 from _utility_functions import *
 from _types import *
 from _agent import *
+from _value_functions import *

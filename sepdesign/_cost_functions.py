@@ -59,11 +59,11 @@ class LinearCostFunction(CostFunction):
         """
         return self._coef
 
-    def __str__(self):
+    def __repr__(self):
         """
         Return a string representation of the function.
         """
-        return super(LinearCostFunction, self).__str__() + \
+        return super(LinearCostFunction, self).__repr__() + \
                 '(coef=%1.2f)' % self.coef
 
 
@@ -88,11 +88,11 @@ class QuadraticCostFunction(CostFunction):
         """
         return self._coef
 
-    def __str__(self):
+    def __repr__(self):
         """
         Return a string representation of the function.
         """
-        return super(QuadraticCostFunction, self).__str__() + \
+        return super(QuadraticCostFunction, self).__repr__() + \
                 '(coef=%1.2f)' % self.coef
 
 

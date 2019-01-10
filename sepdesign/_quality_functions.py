@@ -81,8 +81,8 @@ class LinearQualityFunction(QualityFunction):
         """
         return self._xi_coef
 
-    def __str__(self):
-        return super(LinearQualityFunction, self).__str__() + \
+    def __repr__(self):
+        return super(LinearQualityFunction, self).__repr__() + \
                 '(e_coef=%1.2f, xi_coef=%1.2f)' % (self.e_coef, self.xi_coef)
 
 

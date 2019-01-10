@@ -89,7 +89,7 @@ class Function(object):
         t_f_grad = theano.grad(self.t_f, t_x_part)
         return Function(self.t_x, t_f_grad)
 
-    def __str__(self):
+    def __repr__(self):
         """
         Return a string representation of the object.
         """

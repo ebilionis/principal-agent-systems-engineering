@@ -56,11 +56,11 @@ class ExponentialUtilityFunction(UtilityFunction):
         """
         return self._risk_preference
 
-    def __str__(self):
+    def __repr__(self):
         """
         Get a string representation of the object.
         """
-        return super(ExponentialUtilityFunction, self).__str__() + \
+        return super(ExponentialUtilityFunction, self).__repr__() + \
                 '(risk_preference=%1.2f)' % self.risk_preference
 
 

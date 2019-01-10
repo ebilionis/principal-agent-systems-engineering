@@ -53,7 +53,7 @@ class Agent(object):
         """
         return self._type_probabilities
 
-    def __str__(self):
+    def __repr__(self):
         """
         Return a string representation of the object.
         """
