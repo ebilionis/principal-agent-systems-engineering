@@ -45,12 +45,12 @@ class LinearCostFunction(CostFunction):
                     specified.
     """
 
-    def __init__(self, coef, t_e=None):
+    def __init__(self, coef, t_e=None, name='LinearCostFunction'):
         if t_e is None:
             t_e = T.dscalar('e')
         self._coef = coef
         t_c = coef * t_e
-        super(LinearCostFunction, self).__init__(t_e, t_c)
+        super(LinearCostFunction, self).__init__(t_e, t_c, name=name)
 
     @property
     def coef(self):
@@ -58,6 +58,13 @@ class LinearCostFunction(CostFunction):
         Get the coefficient of the linear function.
         """
         return self._coef
+
+    def __str__(self):
+        """
+        Return a string representation of the function.
+        """
+        return super(LinearCostFunction, self).__str__() + \
+                '(coef=%1.2f)' % self.coef
 
 
 class QuadraticCostFunction(CostFunction):
@@ -67,12 +74,12 @@ class QuadraticCostFunction(CostFunction):
     param t_e : The effort symbolic variable. Created from scratch if not
                     specified.
     """
-    def __init__(self, coef, t_e = None):
+    def __init__(self, coef, t_e=None, name='QuadraticCostFunction'):
         if t_e == None:
             t_e = T.dscalar('e')
-        self._coeff = coef
+        self._coef = coef
         t_c = coef * t_e**2
-        super(QuadraticCostFunction, self).__init__(t_e, t_c)
+        super(QuadraticCostFunction, self).__init__(t_e, t_c, name=name)
 
     @property
     def coef(self):
@@ -81,12 +88,21 @@ class QuadraticCostFunction(CostFunction):
         """
         return self._coef
 
+    def __str__(self):
+        """
+        Return a string representation of the function.
+        """
+        return super(QuadraticCostFunction, self).__str__() + \
+                '(coef=%1.2f)' % self.coef
+
 
 if __name__ == '__main__':
     c = LinearCostFunction(0.5)
+    print 'c to str:', str(c)
     c.compile()
     print 'Linear cost : c(0.5) = %1.2f' % c(0.5)
     c = QuadraticCostFunction(0.5)
+    print 'c to str:', str(c)
     c.compile()
     print 'Quadratic cost : c(0.5) = %1.3f' % c(0.5)
 

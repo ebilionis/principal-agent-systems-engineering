@@ -93,8 +93,7 @@ class Function(object):
         """
         Return a string representation of the object.
         """
-        return 'Function(%s, %s, name=%s)' % (str(self.t_x),
-                                              str(self.t_f), self.name)
+        return self.__class__.__name__
 
 
 if __name__ == '__main__':
