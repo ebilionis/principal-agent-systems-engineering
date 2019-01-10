@@ -94,30 +94,30 @@ class IndividualRationality(object):
         exp_u_pi_g_e_star = -res.jac
         exp_u_pi_g_e2_star = self.exp_u_pi_g_e2(e_star, a)
         exp_u_pi_g_ea_star = self.exp_u_pi_g_ea(e_star, a)
+        # Get the Lagrange multipliers (Lemma 1)
         if np.isclose(e_star, 0.0):
-            # Left constraint is active
-            # g(e) = -e <= 0 -> dg/de = -1
-            print 'HERE'
-            print 'e_star:', e_star
-            #A = np.array([[exp_u_pi_g_e2_star - exp_u_pi_g_e_star, 1.0],
-            #               1.0, 0.0])
-            #b = np.array([[-exp_u_pi_g_ea_star[None, :] + exp_u_pi_g_e_star],
-            #               np.zeros((1, a.shape[0]))])
-            #print A
-            #print b
-            pass
+            mu = np.array([exp_u_pi_g_e_star / -1.0, 0.0])
         elif np.isclose(e_star, 1.0):
-            # Right constraint is active
-            # g(e) = e - 1 <= 0 -> dg/de = 1
-            e_star_g_a = None
-            pass
+            mu = np.array([0.0, exp_u_pi_g_e_star / 1.0])
         else:
-            # Optimum is internal point
-            e_star_g_a = -exp_u_pi_g_ea_star / exp_u_pi_g_e2_star
-        e_star_g_a = -exp_u_pi_g_ea_star / exp_u_pi_g_e2_star
+            mu = np.zeros((2,))
+        d = a.shape[0]
+        A = np.zeros((3 * d, 3 * d))
+        A[:d, :d] = exp_u_pi_g_e2_star * np.eye(d)
+        A[:d, d:2*d] = -(-1.0) * np.eye(d)
+        A[:d, 2*d:3*d] = -(1.0) * np.eye(d)
+        A[d:2*d,:d] = mu[0] * (-1.0) * np.eye(d)
+        A[d:2*d, d:2*d] = (-e_star) * np.eye(d)
+        A[2*d:3*d, :d] = mu[1] * (1.0) * np.eye(d)
+        A[2*d:3*d, 2*d:3*d] = (e_star - 1.0) * np.eye(d)
+        b = np.zeros((3*d,))
+        b[:d] = -exp_u_pi_g_ea_star
+        x = np.linalg.solve(A, b)
+        res['mu'] = mu
         res['e_star'] = e_star
-        res['e_star_g_a'] = e_star_g_a
+        res['e_star_g_a'] = x[:d]
         res['exp_u_pi_e_star'] = exp_u_pi_e_star
+        res['mu_g_a'] = x[d:]
         return res
 
     @property
@@ -148,34 +148,37 @@ if __name__ == '__main__':
     from _transfer_functions import *
 
     # Create an agent of a specific type
-    agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
-                           QuadraticCostFunction(0.),
-                           ExponentialUtilityFunction(2.0))
+    for cost_coef in [0.0, 0.2, 0.7]:
+        print '*' * 80
+        print 'COST COEF: %1.2f' % cost_coef
+        agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
+                               QuadraticCostFunction(cost_coef),
+                               ExponentialUtilityFunction(2.0))
 
-    # Create a transfer function
-    t = RequirementPlusIncentiveTransferFunction()
-    
-    # Create the individual rationality constraint for this person
-    ir = IndividualRationality(agent_type, t)
-    
-    # Compile everything we need to solve the individual rationality const.
-    ir.compile()
+        # Create a transfer function
+        t = RequirementPlusIncentiveTransferFunction()
+        
+        # Create the individual rationality constraint for this person
+        ir = IndividualRationality(agent_type, t)
+        
+        # Compile everything we need to solve the individual rationality const.
+        ir.compile()
 
-    # Evaluate the individual rationality constraints at specific transfer
-    # function parameters
-    a = [0.05, 0.3, 1., 0.1]
-    res = ir.evaluate(a)
-    # The optimal effort is here
-    e_star = res['e_star']
-    print 'e_star = %1.2f' % e_star
-    # The expected utility at the optimal effort
-    exp_u_pi_e_star = res['exp_u_pi_e_star']
-    print 'E_i[U_i(Pi_i(e_star; a))] = %1.2f' % exp_u_pi_e_star
-    # Let's compare e_star_g_e to the numerical derivative
-    e_star_g_a = res['e_star_g_a']
-    func = lambda _a: ir.evaluate(_a)['e_star']
-    func_g_a = nd.Gradient(func)
-    n_e_star_g_a = func_g_a(a)
-    print 'e_star_g_a = ', e_star_g_a
-    print 'n_e_star_g_a =', n_e_star_g_a
-    print 'Close?', np.allclose(e_star_g_a, n_e_star_g_a, atol=1e-3)
+        # Evaluate the individual rationality constraints at specific transfer
+        # function parameters
+        a = [0.00, 0.3, 1., 0.1]
+        res = ir.evaluate(a)
+        # The optimal effort is here
+        e_star = res['e_star']
+        print 'e_star = %1.2f' % e_star
+        # The expected utility at the optimal effort
+        exp_u_pi_e_star = res['exp_u_pi_e_star']
+        print 'E_i[U_i(Pi_i(e_star; a))] = %1.2f' % exp_u_pi_e_star
+        # Let's compare e_star_g_e to the numerical derivative
+        e_star_g_a = res['e_star_g_a']
+        func = lambda _a: ir.evaluate(_a)['e_star']
+        func_g_a = nd.Gradient(func)
+        n_e_star_g_a = func_g_a(a)
+        print 'e_star_g_a = ', e_star_g_a
+        print 'n_e_star_g_a =', n_e_star_g_a
+        print 'Close?', np.allclose(e_star_g_a, n_e_star_g_a, atol=1e-3)
