@@ -18,30 +18,54 @@ class Function(object):
     A class representing a simple 1D function.
     Useful for compositions of functions.
 
-    :param t_x:    List of theano variables.
-    :param t_f:    Theano variable that depends on t_x.
+    :param t_x:    List of theano variables. (immutable)
+    :param t_f:    Theano variable that depends on t_x. (immutable)
+    :param name:   A name for the function.
     """
 
-    def __init__(self, t_x, t_f):
+    def __init__(self, t_x, t_f, name='Function'):
         if not isinstance(t_x, list):
             t_x = [t_x,]
-        self.t_x = t_x
-        self.t_f = t_f
-        self.f_comp = None
+        self._t_x = t_x
+        self._t_f = t_f
+        self._f_comp = None
+        self._name = name
+
+    @property
+    def t_x(self):
+        """
+        Get t_x.
+        """
+        return self._t_x
+
+    @property
+    def t_f(self):
+        """
+        Get t_f.
+        """
+        return self._t_f
+
+    @property
+    def name(self):
+        """
+        Get the name of the function.
+        """
+        return self._name
 
     def compile(self):
         """
         Compiles the function.
         """
-        self.f_comp = theano.function(self.t_x, self.t_f)
+        if self._f_comp is None:
+            self._f_comp = theano.function(self.t_x, self.t_f)
 
     def __call__(self, *x):
         """
         Evaluate the function at x.
         """
-        if self.f_comp is None:
+        if self._f_comp is None:
             raise RuntimeError('Fuction not compiled.')
-        return self.f_comp(*x)
+        return self._f_comp(*x)
 
     def compose(self, g, t_x_elm=None):
         """
@@ -65,6 +89,13 @@ class Function(object):
         t_f_grad = theano.grad(self.t_f, t_x_part)
         return Function(self.t_x, t_f_grad)
 
+    def __str__(self):
+        """
+        Return a string representation of the object.
+        """
+        return 'Function(%s, %s, name=%s)' % (str(self.t_x),
+                                              str(self.t_f), self.name)
+
 
 if __name__ == '__main__':
     from theano import tensor as T
@@ -72,6 +103,7 @@ if __name__ == '__main__':
     t_x = T.dscalar('x')
     t_g = t_x ** 2
     g = Function(t_x, t_g)
+    print 'g to str:', str(g)
     # This will fail because the function is not compiled
     try:
         g(2.)

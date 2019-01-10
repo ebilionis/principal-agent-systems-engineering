@@ -1,17 +1,23 @@
 """
 This class includes the principal optimization problem.
 """
-__all__ = ["PrincipalProblem"]
+__all__ = ['PrincipalProblem']
+
 
 import theano
 import theano.tensor as T
 from _types import AgentType
 from _transfer_functions import TransferFunction
+from _individual_rationality import IndividualRationality
+
 
 class PrincipalProblem(object):
     """
-    The PrincipalClass
+    A class representing the problem faced by the principal.
+
+    :param agents:  A list of agents. Each element of the list is either.
     """
+
     def __init__(self, num_agents, agent_types, type_probs, transfer_func):
         assert len(agent_types) == num_agents
         assert len(type_probs)  == num_agents
@@ -42,7 +48,11 @@ class PrincipalProblem(object):
                 .....
                 I will continue from here
                 """
+                pass
 
+
+if __name__ == '__main__':
+    pass
 
 
 

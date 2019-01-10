@@ -21,18 +21,48 @@ class AgentType(object):
     """
     A class representing the type of an agent.
     
-    :param q:  The quality function (immutable).
-    :param c:  The cost function (immutable).
-    :param u:  The utility function (immutable).
+    :param q:       The quality function (immutable).
+    :param c:       The cost function (immutable).
+    :param u:       The utility function (immutable).
+    :param name:    Added a name for the agent type.
     """
 
-    def __init__(self, q, c, u):
+    def __init__(self, q, c, u, name='AgentType'):
         assert isinstance(q, QualityFunction)
         assert isinstance(c, CostFunction)
-        #assert isinstance(u, UtilityFunction) # TODO: Remove comment
-        self.q = q
-        self.c = c
-        self.u = u
+        assert isinstance(u, UtilityFunction)
+        self._q = q
+        self._c = c
+        self._u = u
+        self._name = name
+
+    @property
+    def q(self):
+        """
+        Get the quality function.
+        """
+        return self._q
+
+    @property
+    def c(self):
+        """
+        Get the cost function.
+        """
+        return self._c
+
+    @property
+    def u(self):
+        """
+        Get the utility function.
+        """
+        return self._u
+
+    @property
+    def name(self):
+        """
+        Get the name of this type.
+        """
+        return self._name
 
     def get_pi(self, t):
         """
@@ -106,6 +136,15 @@ class AgentType(object):
         """
         return self._get_expectation(self.get_util(t), degree=degree)
 
+    def __str__(self):
+        """
+        Return a string representation of this object.
+        """
+        return 'AgentType(%s, %s, %s, name=%s)' % (str(self.q),
+                                                   str(self.c),
+                                                   str(self.u),
+                                                   self.name)
+
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
@@ -122,6 +161,7 @@ if __name__ == '__main__':
     agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
                            QuadraticCostFunction(0.1),
                            ExponentialUtilityFunction(2.0))
+    print 'AgentType to str:', str(agent_type)
 
     # Create a transfer function
     t = RequirementPlusIncentiveTransferFunction()
