@@ -31,7 +31,12 @@ class PrincipalProblem(object):
         self._agents   = agents
         assert isinstance(t, TransferFunction)
         self._t = t
-        # Create individual rationality constraints - This is all we need
+        # Create individual rationality constraints
+        # With the individual rational constraints we can get:
+        # + e_star_ikl
+        # + exp_u_pi_e_star_ikl
+        # + e_star_ikl_g_a
+        # + etc.
         irs = {}
         for a in self._agents:
             irs[a] = {}
