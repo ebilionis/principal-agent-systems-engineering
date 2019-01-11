@@ -54,20 +54,26 @@ class RequirementValueFunction(ValueFunction):
 
 class RequirementPlusValueFunction(ValueFunction):
     """
-    This is a 0 or 1 value function
-    """
-    def __init__(self, t_q=None, t_req=None, t_a = None, gamma = 50.0):
+    This is the value function that is growing by quality for more than 1.
+    :param num_subsystems:  The number of subsystems that must meet the
+                            requirements.
+    :param alphas: The grow factor of the value function for each subsytem
+    """   
+    def __init__(self, num_subsystems, alphas, gamma=50.0):
         self._gamma = gamma
-        if t_q == None:
-            t_q = T.dvector('q')
-        if t_req == None:
-            t_req = T.dscalar('req')
-        if t_a == None:
-            t_a = T.dscalar()
-        t_v = 1. / (1. + T.exp(gamma * (t_req - t_q))) \
-                * (t_a * T.tanh(t_q - t_req) + 1.0)
-        super(RequirementPlusValueFunction, self).__init__(t_q, t_req, 1, t_a, 
-                                                           t_v)
+        self._num_subsystems = num_subsystems
+        self._alphas = alphas
+        t_qs = [T.dvector('q%d' % i) for i in range(num_subsystems)]
+        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (1.0 - t_q))) * (ai * T.tanh(t_q - 1.0) + 1.0)
+                      for t_q, ai in zip(t_qs, self._alphas)], axis=0)
+        super(RequirementPlusValueFunction, self).__init__(t_qs, t_v)
+
+    @property
+    def num_subsystems(self):
+        """
+        Get the subsystems.
+        """
+        return self._num_subsystems
 
     @property
     def gamma(self):
@@ -75,6 +81,13 @@ class RequirementPlusValueFunction(ValueFunction):
         Get the gamma parameter.
         """
         return self._gamma
+    @property
+    def alphas(self):
+        """
+        Get the alpha parameters.
+        """
+        return self._alphas
+
 
 
 if __name__ == '__main__':
@@ -85,7 +98,7 @@ if __name__ == '__main__':
     sns.set_context('paper')
 
     # A value function for the case N = 1
-    v1 = RequirementValueFunction(1)
+    v1 = RequirementPlusValueFunction(1,[0.2])
     v1.compile()
     qs = np.linspace(0, 2, 100)
     v1s = np.array([v1([q]) for q in qs]) # the [q] is required because it
@@ -98,7 +111,7 @@ if __name__ == '__main__':
     ax.set_ylabel('V')
 
     # A value function for the case N = 2
-    v2 = RequirementValueFunction(2)
+    v2 = RequirementPlusValueFunction(2, np.array([0.2,0.3]))
     v2.compile()
     qs1 = np.linspace(0, 2, 100)
     qs2 = np.linspace(0, 2, 100)
@@ -110,5 +123,5 @@ if __name__ == '__main__':
     ax.set_xlabel('$q_1$')
     ax.set_ylabel('$q_2$')
     plt.colorbar(c)
-    plt.show()
+    
 
