@@ -9,12 +9,29 @@ import theano.tensor as T
 import itertools
 import design
 import numpy as np
+import sys
 from _types import AgentType
 from _agent import Agent
 from _utility_functions import UtilityFunction
 from _value_functions import ValueFunction
 from _transfer_functions import TransferFunction
 from _individual_rationality import IndividualRationality
+
+
+# Flattens a list of lists
+flatten = lambda l: [item for sublist in l for item in sublist]
+
+
+def run_and_print(func, verbosity, *args, **kwargs):
+    """
+    Run func(*args, **kwargs) and print something msg.
+    """
+    if verbosity >= 0:
+        sys.stdout.write('Running ' + str(func) + '...')
+    res = func(*args, **kwargs)
+    if verbosity >= 0:
+        sys.stdout.write(' Done!\n')
+    return res
 
 
 class PrincipalProblem(object):
@@ -27,9 +44,10 @@ class PrincipalProblem(object):
     :param t:           The form of the transfer function.
     :param sg_level:    The sparse grid level for taking the expectation over
                         the xi's.
+    :param verbosity:   The verbosity level of the class.
     """
 
-    def __init__(self, u, v, agents, t, sg_level=5):
+    def __init__(self, u, v, agents, t, sg_level=5, verbosity=1):
         assert isinstance(u, UtilityFunction)
         self._u = u
         assert isinstance(v, ValueFunction)
@@ -43,8 +61,27 @@ class PrincipalProblem(object):
         self._agents = agents
         assert isinstance(t, TransferFunction)
         self._t = t
-        # Individual rationality constraints (i-k)
-        irs = [[] for _ in range(self.num_agents)]
+        assert isinstance(sg_level, int)
+        self._sg_level = sg_level
+        assert isinstance(verbosity, int)
+        self._verbosity = verbosity
+        self._setup_exp_u()
+        self._num_param = np.sum([a.num_types for a in self.agents]) * t.num_a
+        self._compiled = False
+
+    def _setup_exp_u(self):
+        """
+        Set up the following:
+        + self.exp_u_raw:   The expected utility of the principal as a
+                            Function of e_star and the transfer function
+                            parameters a. This is a Function. 
+        + self.exp_u:       The expected utility of the principal as a function
+                            of the transfer function parameters a. This is a
+                            common Python function. It also returns the
+                            gradient of the exp_u with respect to a.
+        """
+        # Setup the individual rationality constraints
+        self._setup_irc()
         # Symbolic parameters of transfer functions (i-k)
         t_as = [[] for _ in range(self.num_agents)]
         # Symbolic optimal efforts (i-k)
@@ -57,8 +94,6 @@ class PrincipalProblem(object):
         for i in range(self.num_agents):
             t_xis.append(T.dvector('xi{%d}' % i))
             for k in range(self.agents[i].num_types):
-                irs[i].append(
-                        IndividualRationality(self.agents[i].agent_types[k], t))
                 t_as[i].append(T.dvector('a{%d,%d}' % (i, k)))
                 t_e_stars[i].append(T.scalar('e_stars{%d,%d}' % (i, k)))
                 q_base = self.agents[i].agent_types[k].q
@@ -68,7 +103,6 @@ class PrincipalProblem(object):
                 t_ts[i].append(theano.clone(t.t_f,
             replace={t.t_x[0]: t_qs[i][k],
                      t.t_x[1]: t_as[i][k]}))
-        self._irs = irs
         # For all possible combinations of agent types
         # Expected utility functions
         t_sum_u_over_comb = T.zeros((1,))
@@ -85,12 +119,12 @@ class PrincipalProblem(object):
             p_comb = np.prod([self.agents[i].type_probabilities[at_comb[i]] 
                               for i in range(self.num_agents)])
             # The utility of the principal for this combination of types
-            t_u = theano.clone(u.t_f, replace={u.t_x[0]: t_pi_comb})
+            t_u = theano.clone(self.u.t_f, replace={self.u.t_x[0]: t_pi_comb})
             # Start summing up
             t_sum_u_over_comb += p_comb * t_u
         #theano.printing.pydotprint(t_sum_u_over_comb, outfile='tmp.png')
         # Take the expectation over the Xi's numerically
-        Z, w_unorm = design.sparse_grid(self.num_agents, sg_level, 'GH')
+        Z, w_unorm = design.sparse_grid(self.num_agents, self._sg_level, 'GH')
         Xi = Z * np.sqrt(2.0)
         w = w_unorm / np.sqrt(np.pi ** self.num_agents)
         t_tmp = theano.clone(t_sum_u_over_comb,
@@ -98,13 +132,97 @@ class PrincipalProblem(object):
                                  for i in range(self.num_agents)))
         #theano.printing.pydotprint(t_tmp, outfile='tmp.png')
         # THEANO OBJECT REPRESENTING THE EXPECTED UTILITY OF THE PRINCIPAL:
-        t_exp_u = T.dot(w, t_tmp)
+        t_exp_u_raw = T.dot(w, t_tmp)
+        t_e_stars_f = flatten(t_e_stars)
+        t_as_f = flatten(t_as)
+        self._exp_u_raw = Function(t_e_stars_f + t_as_f, t_exp_u_raw)
+        # Take derivative with respect to e_stars
+        self._exp_u_raw_g_e = self._exp_u_raw.grad(t_e_stars_f)
+        # Take derivative with respect to the as
+        self._exp_u_raw_g_a = self._exp_u_raw.grad(t_as_f)
+
+    def compile(self):
+        """
+        Compile all Functions.
+        """
+        run_and_print(self.exp_u_raw.compile, self.verbosity) 
+        run_and_print(self.exp_u_raw_g_e.compile, self.verbosity)
+        run_and_print(self.exp_u_raw_g_a.compile, self.verbosity)
+        for i in range(self.num_agents):
+            for k in range(self.agents[i].num_types):
+                run_and_print(self._irc[i][k].compile, self.verbosity)
+        self._compiled = True
+
+    def exp_u(self, a):
+        """
+        Evaluate the expected utility of the principal along its gradient
+        wrt to a.
+        """
+        if not self._compiled:
+            raise RuntimeError('You must compile first.')
+        aas = [[] for i in range(self.num_agents)]
+        e_stars = [[] for i in range(self.num_agents)]
+        count_as = 0
+        for i in range(self.num_agents):
+            ag_i = self.agent[i]
+            a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
+            count_as += ag_i.num_types
+            for k in range(ag_i.num_types):
+                a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
+                ass[i].append(a_ik)
+                res_ik = self.irc[i][k].evaluate(a_ik)
+                print res_ik
+
+    def _setup_irc(self):
+        """
+        Set up individual rationality constraints.
+        """
+        # Individual rationality constraints (i-k)
+        irc = [[] for _ in range(self.num_agents)]
+        for i in range(self.num_agents):
+            for k in range(self.agents[i].num_types):
+                irc[i].append(
+                        IndividualRationality(self.agents[i].agent_types[k], t))
+        self._irc = irc
 
     def _agent_type_range(self):
         """
         Returns an iterator over all possible combinations of agent types.
         """
         return itertools.product(*(range(a.num_types) for a in self.agents))
+
+    @property
+    def verbosity(self):
+        """
+        Return the verbosity level of the class.
+        """
+        return self._verbosity
+
+    @property
+    def exp_u_raw(self):
+        """
+        Get the expected utility of the principal as a Function with inputs
+        e_star and the transfer function parameters a.
+        """
+        return self._exp_u_raw
+
+    @property
+    def exp_u_raw_g_e(self):
+        """
+        Return the derivative of the expected utility of the principal with
+        respect to all e_stars as a function of e_star and the transfer
+        function parameters a.
+        """
+        return self._exp_u_raw_g_e
+
+    @property
+    def exp_u_raw_g_a(self):
+        """
+        Return the derivative of the expected utility of the principal with
+        respect to all transfer function parameters a as a function of e_star
+        and a.
+        """
+        return self._exp_u_raw_g_a
     
     @property
     def num_agents(self):
@@ -112,15 +230,6 @@ class PrincipalProblem(object):
         Get the number of agents.
         """
         return len(self.agents)
-
-    @property
-    def compile(self):
-        """
-        Compile everything we need to evaluate the objective and constraints.
-        """
-        for a in self._agents:
-            for at in a.agent_types:
-                irs[a][at].compile()
 
     @property
     def agents(self):
@@ -149,6 +258,13 @@ class PrincipalProblem(object):
         Get the utility function of the principal.
         """
         return self._u
+
+    @property
+    def num_param(self):
+        """
+        Get the total number of transfer function parameters.
+        """
+        return self._num_param
 
     def __repr__(self):
         """
@@ -192,13 +308,9 @@ if __name__ == '__main__':
     p = PrincipalProblem(ExponentialUtilityFunction(0.0),
                          RequirementValueFunction(2),
                          agents, t)
-    print str(p)
-    print str(p._irs)
 
-    # Test looping over agent type combinations
-    for comb in p._agent_type_range():
-        print comb
+    # Compile everything
+    p.compile()
 
-    # Test the evaluation of the system problem at a specific set of parameters
-    a = [0.00, 0.3, 1., 0.1]
-    
+    # Test
+    a = np.random.rand(p.num_param)
