@@ -194,8 +194,12 @@ class PrincipalProblem(object):
         exp_u_pi_0_raw_g_e = self._exp_u_raw_g_e(*(e_stars_f + aas_f))
         # Evaluate derivative of exp_u_pi_0 with respect to a at e_stars and a
         exp_u_pi_0_raw_g_a = self._exp_u_raw_g_a(*(e_stars_f + aas_f))
-        # TODO: SALAR
-        # Populate res['exp_u_pi_0_g_a'] using the chain rule.
+        # Evaluate the total derivative of exp_u_pi_0 with respect to a's at e_stars and a
+        d_exp_u_da_list = []
+        num_agent_types = np.sum([a.num_types for a in self._agents])
+        for i in range(num_agent_types):
+            d_exp_u_da_list += [exp_u_pi_0_raw_g_e[i] * exp_u_pi_0_raw_g_a[i]]
+        res['d_exp_u_pi_0_da'] = d_exp_u_da_list
         return res
 
     def _setup_irc(self):
@@ -249,18 +253,18 @@ class PrincipalProblem(object):
         """
         return self._exp_u_raw_g_a
 
-    def d_exp_u_da(self, *x):
-        """
-        This is to calculate the total derivative of the expected utility of
-        the principal w.r.t. parameters a.
-        """
-        self.d_exp_u_da_list = []
-        if self._compiled is False:
-            self.compile()
-        num_agent_types = np.sum([a.num_types for a in self._agents])
-        for i in range(num_agent_types):
-            self.d_exp_u_da_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
-        return self.d_exp_u_da_list
+    # def d_exp_u_da(self, *x):
+    #     """
+    #     This is to calculate the total derivative of the expected utility of
+    #     the principal w.r.t. parameters a.
+    #     """
+    #     self.d_exp_u_da_list = []
+    #     if self._compiled is False:
+    #         self.compile()
+    #     num_agent_types = np.sum([a.num_types for a in self._agents])
+    #     for i in range(num_agent_types):
+    #         self.d_exp_u_da_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
+    #     return self.d_exp_u_da_list
 
 
 
@@ -360,4 +364,4 @@ if __name__ == '__main__':
 
     # Test
     a = np.random.rand(p.num_param)
-    p.evaluate(a)
+    print p.evaluate(a)
