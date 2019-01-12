@@ -153,25 +153,50 @@ class PrincipalProblem(object):
                 run_and_print(self._irc[i][k].compile, self.verbosity)
         self._compiled = True
 
-    def exp_u(self, a):
+    def evaluate(self, a):
         """
         Evaluate the expected utility of the principal along its gradient
         wrt to a.
         """
         if not self._compiled:
             raise RuntimeError('You must compile first.')
+        # We will return a dictionary with the results
+        res = {}
+        # aas[i][k] is the transfer parameters of agent i type k
         aas = [[] for i in range(self.num_agents)]
+        # e_stars[i][k] is the optimal effort of agent i type k
         e_stars = [[] for i in range(self.num_agents)]
+        # e_stars_g_a[i][k] is the gradient of the optimal effort of agent i
+        # type k with respect to aas[i][k]
+        e_stars_g_a = [[] for i in range(self.num_agents)]
+        # exp_u_pi_e_stars[i][k] is the expected utility of agent i type k
+        # at e_stars[i][k] using transfer parameters aas[i][k]
+        exp_u_pi_e_stars = [[] for i in range(self.num_agents)]
         count_as = 0
         for i in range(self.num_agents):
-            ag_i = self.agent[i]
+            ag_i = self.agents[i]
             a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
             count_as += ag_i.num_types
             for k in range(ag_i.num_types):
                 a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
-                ass[i].append(a_ik)
-                res_ik = self.irc[i][k].evaluate(a_ik)
-                print res_ik
+                aas[i].append(a_ik)
+                res_ik = self._irc[i][k].evaluate(a_ik)
+                e_stars[i].append(res_ik['e_star'])
+                e_stars_g_a[i].append(res_ik['e_star_g_a'])
+                exp_u_pi_e_stars[i].append(res_ik['exp_u_pi_e_star'])
+        # Flatten the list in order to pass them to the functions
+        e_stars_f = flatten(e_stars)
+        aas_f = flatten(aas)
+        # Evaluate the expected utility of the principal
+        exp_u_pi_0 = self._exp_u_raw(*(e_stars_f + aas_f))
+        res['exp_u_pi_0'] = exp_u_pi_0
+        # Evaluate derivative of exp_u_pi_0 with respect to e at e_stars and a
+        exp_u_pi_0_raw_g_e = self._exp_u_raw_g_e(*(e_stars_f + aas_f))
+        # Evaluate derivative of exp_u_pi_0 with respect to a at e_stars and a
+        exp_u_pi_0_raw_g_a = self._exp_u_raw_g_a(*(e_stars_f + aas_f))
+        # TODO: SALAR
+        # Populate res['exp_u_pi_0_g_a'] using the chain rule.
+        return res
 
     def _setup_irc(self):
         """
@@ -331,7 +356,8 @@ if __name__ == '__main__':
 
     # p.exp_u_raw_g_e.compile()
 
-    print p.d_exp_u_da(0.5, 0.5, 0.5, 0.5,[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1])
+    #print p.d_exp_u_da(0.5, 0.5, 0.5, 0.5,[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1])
 
     # Test
     a = np.random.rand(p.num_param)
+    p.evaluate(a)

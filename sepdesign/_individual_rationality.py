@@ -10,6 +10,7 @@ __all__ = ['IndividualRationality']
 import theano
 import theano.tensor as T
 import scipy.optimize as opt
+import numpy as np
 from _types import AgentType
 from _transfer_functions import TransferFunction
 
@@ -83,12 +84,12 @@ class IndividualRationality(object):
             res = opt.minimize(self._obj_fun, e0, args=a,
                                jac=self._obj_fun_jac, tol=1e-16,
                                method='SLSQP', bounds=((0.0, 1.0),))
-            if res.success:
-                all_opt_failed = False
-                if r_min > res.fun:
-                    r_res = res
-        if all_opt_failed:
-            raise RuntimeError('All the restarts failed.')
+            #if res.success:
+            #    all_opt_failed = False
+            if r_min > res.fun:
+                r_res = res
+        #if all_opt_failed:
+        #    raise RuntimeError('All the restarts failed.')
         e_star = res.x[0]
         exp_u_pi_e_star = -res.fun
         exp_u_pi_g_e_star = -res.jac
