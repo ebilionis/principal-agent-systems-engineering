@@ -229,13 +229,13 @@ class PrincipalProblem(object):
         This is to calculate the total derivative of the expected utility of
         the principal w.r.t. parameters a.
         """
-        du_das_list = []
+        self.d_exp_u_da_list = []
         if self._compiled is False:
             self.compile()
         num_agent_types = np.sum([a.num_types for a in self._agents])
         for i in range(num_agent_types):
-            du_das_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
-        return du_das_list
+            self.d_exp_u_da_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
+        return self.d_exp_u_da_list
 
 
 
