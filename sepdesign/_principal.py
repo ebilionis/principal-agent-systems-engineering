@@ -223,6 +223,23 @@ class PrincipalProblem(object):
         and a.
         """
         return self._exp_u_raw_g_a
+
+    def d_exp_u_da(self, *x):
+        """
+        This is to calculate the total derivative of the expected utility of
+        the principal w.r.t. parameters a.
+        """
+        du_das_list = []
+        if self._compiled is False:
+            self.compile()
+        num_agent_types = np.sum([a.num_types for a in self._agents])
+        for i in range(num_agent_types):
+            du_das_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
+        return du_das_list
+
+
+
+    #     return self.exp_u_raw_g_a
     
     @property
     def num_agents(self):
@@ -311,6 +328,10 @@ if __name__ == '__main__':
 
     # Compile everything
     p.compile()
+
+    # p.exp_u_raw_g_e.compile()
+
+    print p.d_exp_u_da(0.5, 0.5, 0.5, 0.5,[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1])
 
     # Test
     a = np.random.rand(p.num_param)
