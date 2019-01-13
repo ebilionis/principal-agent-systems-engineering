@@ -191,6 +191,7 @@ class PrincipalProblem(object):
         # Evaluate the expected utility of the principal
         exp_u_pi_0 = self._exp_u_raw(*(e_stars_f + aas_f))
         res['exp_u_pi_0'] = exp_u_pi_0
+        res['e_stars'] = e_stars_f
         # Evaluate derivative of exp_u_pi_0 with respect to e at e_stars and a
         exp_u_pi_0_raw_g_e = self._exp_u_raw_g_e(*(e_stars_f + aas_f))
         # Evaluate derivative of exp_u_pi_0 with respect to a at e_stars and a
@@ -318,9 +319,9 @@ if __name__ == '__main__':
     agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
                            QuadraticCostFunction(0.1),
                            ExponentialUtilityFunction(2.0))
-    agent_type12 = AgentType(LinearQualityFunction(2.5, 0.1),
-                            QuadraticCostFunction(0.3),
-                            ExponentialUtilityFunction(1.5))
+    agent_type12 = AgentType(LinearQualityFunction(1.5, 0.2),
+                            QuadraticCostFunction(0.1),
+                            ExponentialUtilityFunction(2.0))
     agent_type21 = AgentType(LinearQualityFunction(2.5, 0.1),
                             QuadraticCostFunction(0.3),
                             ExponentialUtilityFunction(1.5))
@@ -331,14 +332,13 @@ if __name__ == '__main__':
     # Create the agents
     agent1 = Agent([agent_type11, agent_type12])
     agent2 = Agent([agent_type21, agent_type22])
-    agents = [agent1, agent2]
-
+    agents = [agent1]
     # Create a transfer function
     t = RequirementPlusIncentiveTransferFunction()
 
     # Create the principal's problem
     p = PrincipalProblem(ExponentialUtilityFunction(0.0),
-                         RequirementValueFunction(2),
+                         RequirementValueFunction(1),
                          agents, t)
 
     # Compile everything
@@ -350,4 +350,5 @@ if __name__ == '__main__':
 
     # Test
     a = np.random.rand(p.num_param)
+    a = np.array([0.0, 0.2, 0.1, 0.1, 0.0, 0.2, 0.1, 0.1])
     print p.evaluate(a)
