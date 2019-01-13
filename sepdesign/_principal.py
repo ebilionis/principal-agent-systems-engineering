@@ -187,6 +187,7 @@ class PrincipalProblem(object):
         # Flatten the list in order to pass them to the functions
         e_stars_f = flatten(e_stars)
         aas_f = flatten(aas)
+        e_stars_ga_f = flatten(e_stars_g_a)
         # Evaluate the expected utility of the principal
         exp_u_pi_0 = self._exp_u_raw(*(e_stars_f + aas_f))
         res['exp_u_pi_0'] = exp_u_pi_0
@@ -194,11 +195,13 @@ class PrincipalProblem(object):
         exp_u_pi_0_raw_g_e = self._exp_u_raw_g_e(*(e_stars_f + aas_f))
         # Evaluate derivative of exp_u_pi_0 with respect to a at e_stars and a
         exp_u_pi_0_raw_g_a = self._exp_u_raw_g_a(*(e_stars_f + aas_f))
-        # Evaluate the total derivative of exp_u_pi_0 with respect to a's at e_stars and a
+        # Evaluate the total derivative of exp_u_pi_0 wrt a's at e_stars and a
         d_exp_u_da_list = []
         num_agent_types = np.sum([a.num_types for a in self._agents])
         for i in range(num_agent_types):
-            d_exp_u_da_list += [exp_u_pi_0_raw_g_e[i] * exp_u_pi_0_raw_g_a[i]]
+            part1 = exp_u_pi_0_raw_g_e[i] * e_stars_ga_f[i]
+            part2 = exp_u_pi_0_raw_g_a[i]
+            d_exp_u_da_list += [part1 + part2]
         res['d_exp_u_pi_0_da'] = d_exp_u_da_list
         return res
 
@@ -252,23 +255,6 @@ class PrincipalProblem(object):
         and a.
         """
         return self._exp_u_raw_g_a
-
-    # def d_exp_u_da(self, *x):
-    #     """
-    #     This is to calculate the total derivative of the expected utility of
-    #     the principal w.r.t. parameters a.
-    #     """
-    #     self.d_exp_u_da_list = []
-    #     if self._compiled is False:
-    #         self.compile()
-    #     num_agent_types = np.sum([a.num_types for a in self._agents])
-    #     for i in range(num_agent_types):
-    #         self.d_exp_u_da_list += [self.exp_u_raw_g_e(*x)[i] * self.exp_u_raw_g_a(*x)[i]]
-    #     return self.d_exp_u_da_list
-
-
-
-    #     return self.exp_u_raw_g_a
     
     @property
     def num_agents(self):
