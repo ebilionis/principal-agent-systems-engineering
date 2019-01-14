@@ -314,11 +314,12 @@ if __name__ == '__main__':
     from _utility_functions import *
     from _transfer_functions import *
     from _value_functions import *
+    import numdifftools as nd
 
     # Create an agent of a specific type
     agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
                            QuadraticCostFunction(0.1),
-                           ExponentialUtilityFunction(2.0))
+                           ExponentialUtilityFunction())
     agent_type12 = AgentType(LinearQualityFunction(1.5, 0.2),
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(2.0))
@@ -332,23 +333,163 @@ if __name__ == '__main__':
     # Create the agents
     agent1 = Agent([agent_type11, agent_type12])
     agent2 = Agent([agent_type21, agent_type22])
-    agents = [agent1]
+    agents = [agent1, agent2]
     # Create a transfer function
     t = RequirementPlusIncentiveTransferFunction()
 
     # Create the principal's problem
     p = PrincipalProblem(ExponentialUtilityFunction(0.0),
-                         RequirementValueFunction(1),
+                         RequirementValueFunction(2),
                          agents, t)
 
     # Compile everything
+    # p.compile()
+
+    num_xis = 10000
+    xi = np.random.randn(num_xis)
+
+    # Test 1: N=1, M=1
+    agent_type = AgentType(LinearQualityFunction(1.2, 0.2), 
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(0.0))
+    agents = Agent(agent_type)
+    t = RequirementPlusIncentiveTransferFunction()
+
+    p = PrincipalProblem(ExponentialUtilityFunction(),
+                        RequirementValueFunction(1),
+                        agents, t)
+    p.compile()
+    q1 = p.agents[0].agent_types[0].q
+    v1 = p.v
+    t1 = p.t
+    q1.compile()
+    v1.compile()
+    t1.compile()
+    a = np.array([0.0, 0.2, 1.0, 0.05])
+    result = p.evaluate(a)
+    mc = np.sum(v1(q1(result['e_stars'][0],xi)) - \
+                t1(q1(result['e_stars'][0], xi), a)) / num_xis 
+    print 'Test cases for N=1, M=1:'
+    print 'expected utility check for N=1, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    exp_u = p.exp_u_raw
+    exp_u.compile()
+    p._setup_irc
+    ir1 = p._irc[0][0]
+    ir1.compile()
+
+    f1 = lambda _a: exp_u(result['e_stars'][0], _a)
+    f2 = lambda _e: exp_u(_e, a)
+    f3 = lambda _a: ir1.evaluate(_a)['e_star']
+
+    gf1 = nd.Gradient(f1)
+    gf2 = (f2(result['e_stars'][0]+1.0e-6)-f2(result['e_stars'][0]-1.0e-6))/(2.e-6)
+    gf3 = nd.Gradient(f3)
+
+    dexp_numerical = gf2 * gf3(a) + gf1(a)
+    print 'dE[u]/da11 check for N=1, M=1: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'])
+    print '##########'
+    # Test2: N=1, M=2
+
+    agent_type11 = AgentType(LinearQualityFunction(1.2, 0.2), 
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(0.0))
+    agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
+                            QuadraticCostFunction(0.1),
+                            ExponentialUtilityFunction(2.0))
+    agents = Agent([agent_type11, agent_type12])
+
+    t = RequirementPlusIncentiveTransferFunction()
+    p = PrincipalProblem(ExponentialUtilityFunction(),
+                        RequirementValueFunction(1),
+                        agents, t)
     p.compile()
 
-    # p.exp_u_raw_g_e.compile()
+    q1 = p.agents[0].agent_types[0].q
+    q2 = p.agents[0].agent_types[1].q
+    v1 = p.v
+    t1 = p.t
+    q1.compile()
 
-    #print p.d_exp_u_da(0.5, 0.5, 0.5, 0.5,[1,1,1,1],[1,1,1,1],[1,1,1,1],[1,1,1,1])
+    q2.compile()
+    v1.compile()
+    t1.compile()
 
-    # Test
-    a = np.random.rand(p.num_param)
-    a = np.array([0.0, 0.2, 0.1, 0.1, 0.0, 0.2, 0.1, 0.1])
-    print p.evaluate(a)
+    a1 = np.array([0.0, 0.2, 1.0, 0.05])
+    a2 = np.array([0.05, 0.3, 1.0, 0.1])
+    a = np.concatenate([a1, a2])
+    result = p.evaluate(a)
+
+    temp1 = 0.5*(v1(q1(result['e_stars'][0],xi)) - \
+                t1(q1(result['e_stars'][0], xi), a1))
+    temp2 = 0.5*(v1(q2(result['e_stars'][1],xi)) - \
+                t1(q2(result['e_stars'][1], xi), a2))
+    mc = np.sum(temp1 + temp2) / num_xis 
+    print 'Test cases for N=1, M=2'
+    print 'expected utility check for N=1, M=2: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    
+    exp_u = p.exp_u_raw
+    exp_u.compile()
+    p._setup_irc
+    ir1 = p._irc[0][0]
+    ir2 = p._irc[0][1]
+    ir1.compile()
+    ir2.compile()
+
+    f1 = lambda _a1: exp_u(result['e_stars'][0], result['e_stars'][1], _a1, a2)
+    f2 = lambda _e1, _e2: exp_u(_e1, _e2, a1, a2)
+    f3 = lambda _a: ir1.evaluate(_a)['e_star']
+    gf1 = nd.Gradient(f1)
+    gf2 = (f2(result['e_stars'][0]+1.0e-6, result['e_stars'][1])-\
+           f2(result['e_stars'][0]-1.0e-6, result['e_stars'][1]))/(2.e-6)
+    gf3 = nd.Gradient(f3)
+    dexp_numerical = gf2 * gf3(a1) + gf1(a1)
+    print 'dE[u]/da_11 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][0])
+
+    f1 = lambda _a2: exp_u(result['e_stars'][0], result['e_stars'][1], a1, _a2)
+    f2 = lambda _e1, _e2: exp_u(_e1, _e2, a1, a2)
+    f3 = lambda _a: ir2.evaluate(_a)['e_star']
+    gf1 = nd.Gradient(f1)
+    gf2 = (f2(result['e_stars'][0], result['e_stars'][1]+1.0e-6)-\
+           f2(result['e_stars'][0], result['e_stars'][1]-1.e-6))/(2.e-6)
+    gf3 = nd.Gradient(f3)
+    dexp_numerical = gf2 * gf3(a2) + gf1(a2)
+    print 'dE[u]/da_12 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][1])
+    print '##########'
+
+    # Test3: N=2, M=1
+
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1), 
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(0.0))
+    agent_type21 = AgentType(LinearQualityFunction(1.4, 0.1), 
+                            QuadraticCostFunction(0.1),
+                            ExponentialUtilityFunction(2.0))
+    agent1 = Agent(agent_type11)
+    agent2 = Agent(agent_type21)
+    agents = [agent1, agent2]
+
+    t = RequirementPlusIncentiveTransferFunction()
+    p = PrincipalProblem(ExponentialUtilityFunction(),
+                        RequirementValueFunction(2),
+                        agents, t)
+    p.compile()
+
+    q1 = p.agents[0].agent_types[0].q
+    q2 = p.agents[1].agent_types[0].q
+    v1 = p.v
+    t1 = p.t
+    q1.compile()
+    q2.compile()
+    v1.compile()
+    t1.compile()
+
+    a1 = np.array([0.0, 0.1, 1., 0.05])
+    a2 = np.array([0.0, 0.2, 1., 0.0])
+    a = np.concatenate([a1, a2])
+    result = p.evaluate(a)
+    temp = v1(q1(result['e_stars'][0], xi), q2(result['e_stars'][1], xi)) - \
+            (t1(q1(result['e_stars'][0], xi), a1) + t1(q2(result['e_stars'][1], xi), a2))
+    mc = np.sum(temp) / num_xis 
+    print 'Test cases for N=2, M=1'
+    print 'expected utility check for N=2, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    quit()
