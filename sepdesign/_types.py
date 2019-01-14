@@ -101,7 +101,7 @@ class AgentType(object):
         t_u = theano.clone(self.u.t_util, replace={self.u.t_pi: pi.t_f})
         return Function([t_e, t_xi, t_a], t_pi)
 
-    def _get_expectation(self, fun, degree=100):
+    def _get_expectation(self, fun, degree=10000):
         """
         Get the expectation of the function ``fun``.
 
