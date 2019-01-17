@@ -184,6 +184,7 @@ class PrincipalProblem(object):
                 e_stars[i].append(res_ik['e_star'])
                 e_stars_g_a[i].append(res_ik['e_star_g_a'])
                 exp_u_pi_e_stars[i].append(res_ik['exp_u_pi_e_star'])
+        res['exp_u_pi_agents'] = exp_u_pi_e_stars
         # Flatten the list in order to pass them to the functions
         e_stars_f = flatten(e_stars)
         aas_f = flatten(aas)
@@ -206,6 +207,62 @@ class PrincipalProblem(object):
         res['d_exp_u_pi_0_da'] = d_exp_u_da_list
         return res
 
+    def optimize_contract(self, restarts = 1):
+        """
+        Returns the optimal contract.
+        """
+        if not self._compiled:
+            self.compile()
+        # This function will return the dictionary of results.
+        res = {}
+        # Number of the transfer function variables.
+        n_var = self.num_param
+        a = np.array([0.0]*n_var)
+        # Bound of the transfer function parameters
+        num_ag_type = n_var / self.t.num_a
+        if self.t.num_a == 4:
+            bnds = ([(0.0, 1.0), (0.0, 1.5), (0.5, 2.0), (0.0, 1.0)]*\
+                     num_ag_type)
+            for i in range(num_ag_type):
+                a[4*i  ] = np.random.uniform(0.0, 1.0)
+                a[4*i+1] = np.random.uniform(0.0, 1.0)
+                a[4*i+2] = np.random.uniform(0.5, 2.0)
+                a[4*i+3] = np.random.uniform(0.0, 1.5)
+        else:
+            bnds = ([(0.0, 1.0), (0.0, 1.5), (0.5, 2.0)]*num_ag_type)
+            for i in random(num_ag_type):
+                a[3*i  ] = np.random.uniform(0.0, 1.0)
+                a[3*i+1] = np.random.uniform(0.0, 1.0)
+                a[3*i+2] = np.random.uniform(0.5, 2.0)
+        # The constraints of the optimization problem
+        cons = []
+        count_as = 0
+        for i in range(self.num_agents):
+            ag_i = self.agents[i]
+            a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
+            count_as += ag_i.num_types
+            for k in range(ag_i.num_types):
+                a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
+                cons += [{'type':'ineq', 
+                        'fun':lambda x: self._irc[i][k].evaluate(x\
+                            [count_as:count_as + self.t.num_a * ag_i.num_types]\
+                            [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star'],
+                        'jac':lambda x: self._irc[i][k].evaluate(x\
+                            [count_as:count_as + self.t.num_a * ag_i.num_types]\
+                            [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']}]
+                for k_in in range(ag_i.num_types):
+                    if k != k_in:
+                        # Construct the incentive compatibility constraints
+                        cons += [{'type':'ineq', 'fun':lambda x:}]
+
+                # temp = {'type': 'ineq', 'fun': lambda x: -self.evaluate(x)['exp_u_pi_0'], 
+                #             'jac':lambda x: -self.jac_neg_se_obj(x, self.sse_eff, self.g_p_x, others)}
+                # cons += []
+
+        # Initialize 
+        return 0
+
+
     def _setup_irc(self):
         """
         Set up individual rationality constraints.
@@ -223,6 +280,8 @@ class PrincipalProblem(object):
         Returns an iterator over all possible combinations of agent types.
         """
         return itertools.product(*(range(a.num_types) for a in self.agents))
+
+
 
     @property
     def verbosity(self):
@@ -315,6 +374,30 @@ if __name__ == '__main__':
     from _transfer_functions import *
     from _value_functions import *
     import numdifftools as nd
+
+
+    # Creat an example to test the optimize_contract
+
+    agent_type11 = AgentType(LinearQualityFunction(1.2, 0.2), 
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(0.0))
+    agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
+                            QuadraticCostFunction(0.1),
+                            ExponentialUtilityFunction(2.0))
+    agents = Agent([agent_type11, agent_type12])
+
+    t = RequirementPlusIncentiveTransferFunction()
+    p = PrincipalProblem(ExponentialUtilityFunction(),
+                        RequirementValueFunction(1),
+                        agents, t)
+    p.compile()
+    a = np.array([0.0, 0.2, 1.0, 0.05, 0.0, 0.3, 1.0, 0.1])
+
+    # res = p.evaluate(a)
+    p.optimize_contract(a)
+    quit()
+
+
 
     # Create an agent of a specific type
     agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
@@ -487,8 +570,10 @@ if __name__ == '__main__':
     a2 = np.array([0.0, 0.2, 1., 0.0])
     a = np.concatenate([a1, a2])
     result = p.evaluate(a)
-    temp = v1(q1(result['e_stars'][0], xi), q2(result['e_stars'][1], xi)) - \
-            (t1(q1(result['e_stars'][0], xi), a1) + t1(q2(result['e_stars'][1], xi), a2))
+    xi_1 = np.random.randn(num_xis)
+    xi_2 = np.random.randn(num_xis)
+    temp = v1(q1(result['e_stars'][0], xi_1), q2(result['e_stars'][1], xi_2)) - \
+            (t1(q1(result['e_stars'][0], xi_1), a1) + t1(q2(result['e_stars'][1], xi_2), a2))
     mc = np.sum(temp) / num_xis 
     print 'Test cases for N=2, M=1'
     print 'expected utility check for N=2, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
