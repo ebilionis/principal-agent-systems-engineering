@@ -10,6 +10,7 @@ import itertools
 import design
 import numpy as np
 import sys
+import scipy.optimize as opt
 from _types import AgentType
 from _agent import Agent
 from _utility_functions import UtilityFunction
@@ -151,6 +152,8 @@ class PrincipalProblem(object):
         for i in range(self.num_agents):
             for k in range(self.agents[i].num_types):
                 run_and_print(self._irc[i][k].compile, self.verbosity)
+        self._neg_obj_fun = lambda a: -self.evaluate(a)['exp_u_pi_0']
+        self._jac_neg_obj_fun = lambda a: -np.array(self.evaluate(a)['d_exp_u_pi_0_da'])
         self._compiled = True
 
     def evaluate(self, a):
@@ -221,46 +224,84 @@ class PrincipalProblem(object):
         # Bound of the transfer function parameters
         num_ag_type = n_var / self.t.num_a
         if self.t.num_a == 4:
-            bnds = ([(0.0, 1.0), (0.0, 1.5), (0.5, 2.0), (0.0, 1.0)]*\
+            bnds = ([(0., .0), (0.0, 1.5), (0.5, 2.0), (0.0, 1.0)]*\
                      num_ag_type)
-            for i in range(num_ag_type):
-                a[4*i  ] = np.random.uniform(0.0, 1.0)
-                a[4*i+1] = np.random.uniform(0.0, 1.0)
-                a[4*i+2] = np.random.uniform(0.5, 2.0)
-                a[4*i+3] = np.random.uniform(0.0, 1.5)
         else:
             bnds = ([(0.0, 1.0), (0.0, 1.5), (0.5, 2.0)]*num_ag_type)
-            for i in random(num_ag_type):
-                a[3*i  ] = np.random.uniform(0.0, 1.0)
-                a[3*i+1] = np.random.uniform(0.0, 1.0)
-                a[3*i+2] = np.random.uniform(0.5, 2.0)
         # The constraints of the optimization problem
+        
+        # Construct the individual rationaluty and incentive compatibility
+        # constraints 
+        # cons = []
+        # count_as = -1
+        # for i in range(self.num_agents):
+        #     ag_i = self.agents[i]
+        #     count_as += ag_i.num_types
+        #     # a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
+        #     for k in range(ag_i.num_types):
+        #         # This is to build the individual rationaluty constraints
+        #         # a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
+        #         cons += [{'type':'ineq', 
+        #                 'fun':lambda x: self._irc[i][k].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star'],
+        #                 'jac':lambda x: self._irc[i][k].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']}]
+        #         for kin in range(ag_i.num_types):
+        #             # a_ikin = a_i[kin * self.t.num_a:(kin+1) * self.t.num_a]
+        #             if k != kin:
+        #                 # Construct the incentive compatibility constraints
+        #                 cons += [{'type':'ineq', 
+        #                 'fun':lambda x: self._irc[i][k].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star']-\
+        #                     self._irc[i][kin].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [kin * self.t.num_a:(kin+1) * self.t.num_a])['exp_u_pi_e_star'],
+        #                 'jac':lambda x: self._irc[i][k].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']-\
+        #                     self._irc[i][kin].evaluate(x\
+        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
+        #                     [kin * self.t.num_a:(kin+1) * self.t.num_a])['e_star_g_a']}]
+        #             else:
+        #                 pass
         cons = []
-        count_as = 0
-        for i in range(self.num_agents):
-            ag_i = self.agents[i]
-            a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
-            count_as += ag_i.num_types
-            for k in range(ag_i.num_types):
-                a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
-                cons += [{'type':'ineq', 
-                        'fun':lambda x: self._irc[i][k].evaluate(x\
-                            [count_as:count_as + self.t.num_a * ag_i.num_types]\
-                            [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star'],
-                        'jac':lambda x: self._irc[i][k].evaluate(x\
-                            [count_as:count_as + self.t.num_a * ag_i.num_types]\
-                            [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']}]
-                for k_in in range(ag_i.num_types):
-                    if k != k_in:
-                        # Construct the incentive compatibility constraints
-                        cons += [{'type':'ineq', 'fun':lambda x:}]
-
-                # temp = {'type': 'ineq', 'fun': lambda x: -self.evaluate(x)['exp_u_pi_0'], 
-                #             'jac':lambda x: -self.jac_neg_se_obj(x, self.sse_eff, self.g_p_x, others)}
-                # cons += []
-
-        # Initialize 
-        return 0
+        ag_i = self.agents[0]
+        cons += [{'type':'ineq', 
+                        'fun':lambda x: self._irc[0][0].evaluate(x)['exp_u_pi_e_star'],
+                        'jac':lambda x: self._irc[0][0].evaluate(x)['e_star_g_a']},
+                {'type':'ineq', 
+                        'fun':lambda x: self.evaluate(x)['exp_u_pi_0'],
+                        'jac':lambda x: self.evaluate(x)['d_exp_u_pi_0_da']}]
+        comp = 1.e10
+        ret = None
+        for r in range(restarts):
+            if self.t.num_a == 4:
+                for i in range(num_ag_type):
+                    a[4*i  ] = np.random.uniform(0.0, 1.0)
+                    a[4*i+1] = np.random.uniform(0.0, 1.0)
+                    a[4*i+2] = np.random.uniform(0.5, 2.0)
+                    a[4*i+3] = np.random.uniform(0.0, 1.5)
+            else:
+                for i in range(num_ag_type):
+                    a[3*i  ] = np.random.uniform(0.0, 1.0)
+                    a[3*i+1] = np.random.uniform(0.0, 1.0)
+                    a[3*i+2] = np.random.uniform(0.5, 2.0)
+            print r
+            result = opt.minimize(fun=self._neg_obj_fun, x0 = a, 
+                                  jac=self._jac_neg_obj_fun,
+                                  tol = 1.e-6,
+                                  constraints = cons,
+                                  method = 'slsqp',
+                                  bounds = bnds,
+                                  options = {'disp':False, 'maxiter':100})
+            if result.fun < comp:
+                ret  = result
+                comp = result.fun
+        print ret
+        return ret
 
 
     def _setup_irc(self):
@@ -378,29 +419,35 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(1.2, 0.2), 
-                            QuadraticCostFunction(0.2),
+    agent_type11 = AgentType(LinearQualityFunction(1.3, 0.1), 
+                            QuadraticCostFunction(0.0),
                             ExponentialUtilityFunction(0.0))
     agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(2.0))
-    agents = Agent([agent_type11, agent_type12])
+    agents = Agent([agent_type11])
 
-    t = RequirementPlusIncentiveTransferFunction()
+    t = RequirementPlusIncentiveTransferFunction(gamma=500.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1),
                         agents, t)
     p.compile()
-    a = np.array([0.0, 0.2, 1.0, 0.05, 0.0, 0.3, 1.0, 0.1])
+    # a = np.array([0.,         0.13335302, 0.50833055, 0.00280147])
+    # res = p.evaluate(a)
+    # print res
+    # quit()
+    
+    # a = np.array([3.11195514e-12, 1.41591725e+00, 1.55732629e+00, 1.00000000e+00])
 
     # res = p.evaluate(a)
-    p.optimize_contract(a)
+    res = p.optimize_contract(5)
+    print p.evaluate(res.x)
     quit()
 
 
 
     # Create an agent of a specific type
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1),
                            QuadraticCostFunction(0.1),
                            ExponentialUtilityFunction())
     agent_type12 = AgentType(LinearQualityFunction(1.5, 0.2),
@@ -474,7 +521,7 @@ if __name__ == '__main__':
     # Test2: N=1, M=2
 
     agent_type11 = AgentType(LinearQualityFunction(1.2, 0.2), 
-                            QuadraticCostFunction(0.2),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(0.0))
     agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
                             QuadraticCostFunction(0.1),

@@ -88,37 +88,46 @@ class IndividualRationality(object):
             #    all_opt_failed = False
             if r_min > res.fun:
                 r_res = res
+                r_min = res.fun
         #if all_opt_failed:
         #    raise RuntimeError('All the restarts failed.')
-        e_star = res.x[0]
-        exp_u_pi_e_star = -res.fun
-        exp_u_pi_g_e_star = -res.jac
-        exp_u_pi_g_e2_star = self.exp_u_pi_g_e2(e_star, a)
-        exp_u_pi_g_ea_star = self.exp_u_pi_g_ea(e_star, a)
-        # Get the Lagrange multipliers (Lemma 1)
-        if np.isclose(e_star, 0.0):
-            mu = np.array([exp_u_pi_g_e_star / -1.0, 0.0])
-        elif np.isclose(e_star, 1.0):
-            mu = np.array([0.0, exp_u_pi_g_e_star / 1.0])
+        res = r_res
+        if res is None:
+            res = {}
+            res['e_star'] = 0.
+            res['e_star_g_a'] = np.zeros(a.shape[0])
+            res['exp_u_pi_e_star'] = 0.
         else:
-            mu = np.zeros((2,))
-        d = a.shape[0]
-        A = np.zeros((3 * d, 3 * d))
-        A[:d, :d] = exp_u_pi_g_e2_star * np.eye(d)
-        A[:d, d:2*d] = -(-1.0) * np.eye(d)
-        A[:d, 2*d:3*d] = -(1.0) * np.eye(d)
-        A[d:2*d,:d] = mu[0] * (-1.0) * np.eye(d)
-        A[d:2*d, d:2*d] = (-e_star) * np.eye(d)
-        A[2*d:3*d, :d] = mu[1] * (1.0) * np.eye(d)
-        A[2*d:3*d, 2*d:3*d] = (e_star - 1.0) * np.eye(d)
-        b = np.zeros((3*d,))
-        b[:d] = -exp_u_pi_g_ea_star
-        x = np.linalg.solve(A, b)
-        res['mu'] = mu
-        res['e_star'] = e_star
-        res['e_star_g_a'] = x[:d]
-        res['exp_u_pi_e_star'] = exp_u_pi_e_star
-        res['mu_g_a'] = x[d:]
+            e_star = res.x[0]
+            exp_u_pi_e_star = -res.fun
+            exp_u_pi_g_e_star = -res.jac
+            exp_u_pi_g_e2_star = self.exp_u_pi_g_e2(e_star, a)
+            exp_u_pi_g_ea_star = self.exp_u_pi_g_ea(e_star, a)
+            # Get the Lagrange multipliers (Lemma 1)
+            if np.isclose(e_star, 0.0):
+                mu = np.array([exp_u_pi_g_e_star / -1.0, 0.0])
+            elif np.isclose(e_star, 1.0):
+                mu = np.array([0.0, exp_u_pi_g_e_star / 1.0])
+            else:
+                mu = np.zeros((2,))
+            d = a.shape[0]
+            A = np.zeros((3 * d, 3 * d))
+            A[:d, :d] = exp_u_pi_g_e2_star * np.eye(d)
+            A[:d, d:2*d] = -(-1.0) * np.eye(d)
+            A[:d, 2*d:3*d] = -(1.0) * np.eye(d)
+            A[d:2*d,:d] = mu[0] * (-1.0) * np.eye(d)
+            A[d:2*d, d:2*d] = (-e_star) * np.eye(d)
+            A[2*d:3*d, :d] = mu[1] * (1.0) * np.eye(d)
+            A[2*d:3*d, 2*d:3*d] = (e_star - 1.0) * np.eye(d)
+            b = np.zeros((3*d,))
+            b[:d] = -exp_u_pi_g_ea_star
+            x = np.linalg.solve(A+1.e-7*np.eye(A.shape[0]), b)
+            res['mu'] = mu
+            res['e_star'] = e_star
+            res['e_star_g_a'] = x[:d]
+            res['exp_u_pi_e_star'] = exp_u_pi_e_star
+            res['mu_g_a'] = x[d:]
+        print res
         return res
 
     @property
