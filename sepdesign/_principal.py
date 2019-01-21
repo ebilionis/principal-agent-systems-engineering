@@ -152,10 +152,8 @@ class PrincipalProblem(object):
         for i in range(self.num_agents):
             for k in range(self.agents[i].num_types):
                 run_and_print(self._irc[i][k].compile, self.verbosity)
-        self._neg_obj_fun = lambda a: -self.evaluate(a)['exp_u_pi_0']
-        self._jac_neg_obj_fun = lambda a: -np.array(self.evaluate(a)['d_exp_u_pi_0_da'])
         self._compiled = True
-
+    
     def evaluate(self, a):
         """
         Evaluate the expected utility of the principal along its gradient
@@ -203,106 +201,77 @@ class PrincipalProblem(object):
         # Evaluate the total derivative of exp_u_pi_0 wrt a's at e_stars and a
         d_exp_u_da_list = []
         num_agent_types = np.sum([a.num_types for a in self._agents])
+        tmp = np.zeros((self.num_param,))
         for i in range(num_agent_types):
             part1 = exp_u_pi_0_raw_g_e[i] * e_stars_ga_f[i]
             part2 = exp_u_pi_0_raw_g_a[i]
             d_exp_u_da_list += [part1 + part2]
-        res['d_exp_u_pi_0_da'] = d_exp_u_da_list
+        res['d_exp_u_pi_0_da'] = np.hstack(d_exp_u_da_list)
         return res
 
-    def optimize_contract(self, restarts = 1):
+    def optimize_contract(self, num_restarts=10):
         """
         Returns the optimal contract.
         """
-        if not self._compiled:
-            self.compile()
-        # This function will return the dictionary of results.
-        res = {}
-        # Number of the transfer function variables.
-        n_var = self.num_param
-        a = np.array([0.0]*n_var)
-        # Bound of the transfer function parameters
-        num_ag_type = n_var / self.t.num_a
-        if self.t.num_a == 4:
-            bnds = ([(0., .0), (0.0, 1.5), (0.5, 2.0), (0.0, 1.0)]*\
-                     num_ag_type)
-        else:
-            bnds = ([(0.0, 1.0), (0.0, 1.5), (0.5, 2.0)]*num_ag_type)
-        # The constraints of the optimization problem
-        
-        # Construct the individual rationaluty and incentive compatibility
-        # constraints 
-        # cons = []
-        # count_as = -1
-        # for i in range(self.num_agents):
-        #     ag_i = self.agents[i]
-        #     count_as += ag_i.num_types
-        #     # a_i = a[count_as:count_as + self.t.num_a * ag_i.num_types]
-        #     for k in range(ag_i.num_types):
-        #         # This is to build the individual rationaluty constraints
-        #         # a_ik = a_i[k * self.t.num_a:(k+1) * self.t.num_a]
-        #         cons += [{'type':'ineq', 
-        #                 'fun':lambda x: self._irc[i][k].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star'],
-        #                 'jac':lambda x: self._irc[i][k].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']}]
-        #         for kin in range(ag_i.num_types):
-        #             # a_ikin = a_i[kin * self.t.num_a:(kin+1) * self.t.num_a]
-        #             if k != kin:
-        #                 # Construct the incentive compatibility constraints
-        #                 cons += [{'type':'ineq', 
-        #                 'fun':lambda x: self._irc[i][k].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['exp_u_pi_e_star']-\
-        #                     self._irc[i][kin].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [kin * self.t.num_a:(kin+1) * self.t.num_a])['exp_u_pi_e_star'],
-        #                 'jac':lambda x: self._irc[i][k].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [k * self.t.num_a:(k+1) * self.t.num_a])['e_star_g_a']-\
-        #                     self._irc[i][kin].evaluate(x\
-        #                     [count_as:count_as + self.t.num_a * ag_i.num_types]\
-        #                     [kin * self.t.num_a:(kin+1) * self.t.num_a])['e_star_g_a']}]
-        #             else:
-        #                 pass
-        cons = []
-        ag_i = self.agents[0]
-        cons += [{'type':'ineq', 
-                        'fun':lambda x: self._irc[0][0].evaluate(x)['exp_u_pi_e_star'],
-                        'jac':lambda x: self._irc[0][0].evaluate(x)['e_star_g_a']},
-                {'type':'ineq', 
-                        'fun':lambda x: self.evaluate(x)['exp_u_pi_0'],
-                        'jac':lambda x: self.evaluate(x)['d_exp_u_pi_0_da']}]
-        comp = 1.e10
-        ret = None
-        for r in range(restarts):
-            if self.t.num_a == 4:
-                for i in range(num_ag_type):
-                    a[4*i  ] = np.random.uniform(0.0, 1.0)
-                    a[4*i+1] = np.random.uniform(0.0, 1.0)
-                    a[4*i+2] = np.random.uniform(0.5, 2.0)
-                    a[4*i+3] = np.random.uniform(0.0, 1.5)
-            else:
-                for i in range(num_ag_type):
-                    a[3*i  ] = np.random.uniform(0.0, 1.0)
-                    a[3*i+1] = np.random.uniform(0.0, 1.0)
-                    a[3*i+2] = np.random.uniform(0.5, 2.0)
-            print r
-            result = opt.minimize(fun=self._neg_obj_fun, x0 = a, 
-                                  jac=self._jac_neg_obj_fun,
-                                  tol = 1.e-6,
-                                  constraints = cons,
-                                  method = 'slsqp',
-                                  bounds = bnds,
-                                  options = {'disp':False, 'maxiter':100})
-            if result.fun < comp:
-                ret  = result
-                comp = result.fun
-        print ret
-        return ret
+        # Optimization bounds
+        bnds = np.array([(0.0, 2.0) for _ in range(self.num_param)])
+        #bnds = np.array([(0.0, 0.1), (0.1, 1.5), (0.7, 1.3)])
 
+        # The objective function 
+        def obj_fun(a, obj):
+            res = obj.evaluate(a)
+            return -res['exp_u_pi_0'], -res['d_exp_u_pi_0_da']
+
+        # The participation constraints
+        def part_const(a, irc_ik, i, k, num_types, num_a, count_as):
+            # Extract the part of a that is relevant
+            a_i = a[count_as:count_as + num_a * num_types]
+            a_ik = a_i[k * num_a:(k+1) * num_a]
+            res_ik = irc_ik.evaluate(a_ik)
+            return res_ik['exp_u_pi_e_star']
+
+        # The Jacobian of the constraint
+        def part_const_jac(a, irc_ik, i, k, num_types, num_a, count_as):
+            a_i = a[count_as:count_as + num_a * num_types]
+            a_ik = a_i[k * num_a:(k+1) * num_a]
+            res_ik = irc_ik.evaluate(a_ik)
+            jac_ik = res_ik['exp_u_pi_e_star_g_a']
+            jac = np.zeros(a.shape)
+            jac[count_as + num_a * k:count_as + num_a * (k + 1)] = jac_ik 
+            return jac
+
+        part_cons = []
+        count_as = 0
+        for i in range(self.num_agents):
+            ag_i = self.agents[i]
+            for k in range(ag_i.num_types):
+                con = {'type': 'ineq',
+                       'fun': part_const,
+                       #'jac': part_const_jac,
+                       'args': (self._irc[i][k], i, k, ag_i.num_types,
+                                self.t.num_a, count_as)}
+                part_cons.append(con)
+            count_as += ag_i.num_types
+
+        # Test optimization
+        fun_min = 1e99
+        res_min = None
+        for n in range(num_restarts):
+            a0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
+            try:
+                res = opt.minimize(obj_fun, a0, jac=True, args=(self,), method='L-BFGS-B',
+                                   bounds=bnds)#, constraints=part_cons)
+                if fun_min > res['fun']:
+                    fun_min = res['fun']
+                    res_min = res
+                print res
+                print '*' * 80
+                r = self.evaluate(res.x)
+                print r 
+                print '*' * 80
+            except:
+                print 'SLSQP failed.'
+        print res_min
 
     def _setup_irc(self):
         """
@@ -419,37 +388,37 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(1.3, 0.1), 
-                            QuadraticCostFunction(0.0),
+    agent_type11 = AgentType(LinearQualityFunction(2.0, 0.01), 
+                            QuadraticCostFunction(0.05),
                             ExponentialUtilityFunction(0.0))
     agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(2.0))
     agents = Agent([agent_type11])
 
-    t = RequirementPlusIncentiveTransferFunction(gamma=500.)
+    t = RequirementTransferFunction(gamma=100.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1),
+                        RequirementValueFunction(1, gamma=100.),
                         agents, t)
     p.compile()
-    # a = np.array([0.,         0.13335302, 0.50833055, 0.00280147])
-    # res = p.evaluate(a)
-    # print res
-    # quit()
+    a = np.array([0., 0.5, 1.0])#, 0.00280147])
+    res = p.evaluate(a)
+    print res
+    #quit()
     
     # a = np.array([3.11195514e-12, 1.41591725e+00, 1.55732629e+00, 1.00000000e+00])
 
     # res = p.evaluate(a)
-    res = p.optimize_contract(5)
+    res = p.optimize_contract(10)
     print 'evaluate the variables in the optimum point of the contract'
-    print p.evaluate(res.x)
+    #print p.evaluate(res.x)
     quit()
 
 
 
     # Create an agent of a specific type
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1),
-                           QuadraticCostFunction(0.1),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.05),
+                           QuadraticCostFunction(0.05),
                            ExponentialUtilityFunction())
     agent_type12 = AgentType(LinearQualityFunction(1.5, 0.2),
                             QuadraticCostFunction(0.1),

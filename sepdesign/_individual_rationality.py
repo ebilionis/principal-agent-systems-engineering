@@ -60,7 +60,7 @@ class IndividualRationality(object):
         self._obj_fun = lambda _e, _a: -self.exp_u_pi(_e[0], _a)
         self._obj_fun_jac = lambda _e, _a: -self.exp_u_pi_g_e(_e[0], _a)
 
-    def evaluate(self, a, num_restarts=5):
+    def evaluate(self, a, num_restarts=10):
         """
         Evaluate the individual rationality constraints at specific
         transfer function parameters.
@@ -127,7 +127,7 @@ class IndividualRationality(object):
             res['e_star_g_a'] = x[:d]
             res['exp_u_pi_e_star'] = exp_u_pi_e_star
             res['mu_g_a'] = x[d:]
-        print res
+            res['exp_u_pi_e_star_g_a'] = -res['jac'] * res['e_star_g_a']
         return res
 
     @property
