@@ -441,6 +441,7 @@ if __name__ == '__main__':
 
     # res = p.evaluate(a)
     res = p.optimize_contract(5)
+    print 'evaluate the variables in the optimum point of the contract'
     print p.evaluate(res.x)
     quit()
 
