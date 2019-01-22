@@ -230,7 +230,17 @@ class PrincipalProblem(object):
             res_ik = irc_ik.evaluate(a_ik)
             return res_ik['exp_u_pi_e_star']
 
-        # The Jacobian of the constraint
+        # The incentive comptability constraints
+        def part_const_inc_comp(a, irc_ik, irc_ikf, i, k, kf, num_types, num_a, count_as):
+            # Extract the part of a that is relevant
+            a_i = a[count_as:count_as + num_a * num_types]
+            a_ik  = a_i[k * num_a:(k+1) * num_a]
+            a_ikf = a_i[kf * num_a:(kf+1) * num_a]
+            res_ik = irc_ik.evaluate(a_ik)
+            res_ikf = irc_ikf.evaluate(a_ikf)
+            return res_ik['exp_u_pi_e_star'] - res_ikf['exp_u_pi_e_star']
+
+        # The Jacobian of the participation constraint
         def part_const_jac(a, irc_ik, i, k, num_types, num_a, count_as):
             a_i = a[count_as:count_as + num_a * num_types]
             a_ik = a_i[k * num_a:(k+1) * num_a]
@@ -240,6 +250,21 @@ class PrincipalProblem(object):
             jac[count_as + num_a * k:count_as + num_a * (k + 1)] = jac_ik 
             return jac
 
+        # The incentive comptability constraints
+        def part_const_inc_comp_jac(a, irc_ik, irc_ikf, i, k, kf, num_types, num_a, count_as):
+            # Extract the part of a that is relevant
+            a_i = a[count_as:count_as + num_a * num_types]
+            a_ik  = a_i[k * num_a:(k+1) * num_a]
+            a_ikf = a_i[kf * num_a:(kf+1) * num_a]
+            res_ik = irc_ik.evaluate(a_ik)
+            res_ikf = irc_ikf.evaluate(a_ikf)
+            jac_ik = res_ik['exp_u_pi_e_star_g_a']
+            jac_ikf = res_ikf['exp_u_pi_e_star_g_a']
+            jac = np.zeros(a.shape)
+            jac[count_as + num_a * k:count_as + num_a * (k + 1)] = jac_ik 
+            jac[count_as + num_a * kf:count_as + num_a * (kf + 1)] = jac_ikf
+            return jac
+
         part_cons = []
         count_as = 0
         for i in range(self.num_agents):
@@ -247,10 +272,23 @@ class PrincipalProblem(object):
             for k in range(ag_i.num_types):
                 con = {'type': 'ineq',
                        'fun': part_const,
-                       #'jac': part_const_jac,
+                       'jac': part_const_jac,
                        'args': (self._irc[i][k], i, k, ag_i.num_types,
                                 self.t.num_a, count_as)}
                 part_cons.append(con)
+            count_as += ag_i.num_types
+        count_as = 0
+        for i in range(self.num_agents):
+            ag_i = self.agents[i]
+            for k in range(ag_i.num_types):
+                for kf in range(ag_i.num_types):
+                    if kf != k:
+                        con = {'type': 'ineq',
+                               'fun': part_const_inc_comp,
+                               'jac': part_const_inc_comp_jac,
+                               'args': (self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types,
+                                self.t.num_a, count_as)}
+                        part_cons.append(con)
             count_as += ag_i.num_types
 
         # Test optimization
@@ -258,20 +296,22 @@ class PrincipalProblem(object):
         res_min = None
         for n in range(num_restarts):
             a0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
+            print n
             try:
-                res = opt.minimize(obj_fun, a0, jac=True, args=(self,), method='L-BFGS-B',
-                                   bounds=bnds)#, constraints=part_cons)
-                if fun_min > res['fun']:
+                res = opt.minimize(obj_fun, a0, jac=True, args=(self,), method='slsqp',
+                                   bounds=bnds, constraints=part_cons, options={'disp':True})
+                if fun_min > res['fun'] and res.success:
                     fun_min = res['fun']
                     res_min = res
-                print res
-                print '*' * 80
-                r = self.evaluate(res.x)
-                print r 
-                print '*' * 80
+                    print res
+                    print '*' * 80
+                    r = self.evaluate(res_min.x)
+                    print 'contract parameters:', res_min.x
+                    print r 
+                    print '*' * 80
             except:
-                print 'SLSQP failed.'
-        print res_min
+                print 'Optimization failed.'
+        return res_min
 
     def _setup_irc(self):
         """
@@ -388,22 +428,23 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(2.0, 0.01), 
-                            QuadraticCostFunction(0.05),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2), 
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(0.0))
-    agent_type12 = AgentType(LinearQualityFunction(1.1, 0.3), 
+
+    agent_type12 = AgentType(LinearQualityFunction(1.3, 0.1), 
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(2.0))
     agents = Agent([agent_type11])
 
-    t = RequirementTransferFunction(gamma=100.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=100.),
+                        RequirementValueFunction(1, gamma=50.),
                         agents, t)
     p.compile()
-    a = np.array([0., 0.5, 1.0])#, 0.00280147])
-    res = p.evaluate(a)
-    print res
+    # a = np.array([0., 0.5, 1.0, 0.05])
+    # res = p.evaluate(a)
+    # print res
     #quit()
     
     # a = np.array([3.11195514e-12, 1.41591725e+00, 1.55732629e+00, 1.00000000e+00])
@@ -411,6 +452,7 @@ if __name__ == '__main__':
     # res = p.evaluate(a)
     res = p.optimize_contract(10)
     print 'evaluate the variables in the optimum point of the contract'
+    print res
     #print p.evaluate(res.x)
     quit()
 
