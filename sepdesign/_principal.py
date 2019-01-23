@@ -17,7 +17,7 @@ from _utility_functions import UtilityFunction
 from _value_functions import ValueFunction
 from _transfer_functions import TransferFunction
 from _individual_rationality import IndividualRationality
-
+import pyipopt
 
 # Flattens a list of lists
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -265,53 +265,123 @@ class PrincipalProblem(object):
             jac[count_as + num_a * kf:count_as + num_a * (kf + 1)] = jac_ikf
             return jac
 
-        part_cons = []
-        count_as = 0
-        for i in range(self.num_agents):
-            ag_i = self.agents[i]
-            for k in range(ag_i.num_types):
-                con = {'type': 'ineq',
-                       'fun': part_const,
-                       'jac': part_const_jac,
-                       'args': (self._irc[i][k], i, k, ag_i.num_types,
-                                self.t.num_a, count_as)}
-                part_cons.append(con)
-            count_as += ag_i.num_types
-        count_as = 0
-        for i in range(self.num_agents):
-            ag_i = self.agents[i]
-            for k in range(ag_i.num_types):
-                for kf in range(ag_i.num_types):
-                    if kf != k:
-                        con = {'type': 'ineq',
-                               'fun': part_const_inc_comp,
-                               'jac': part_const_inc_comp_jac,
-                               'args': (self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types,
-                                self.t.num_a, count_as)}
+        # part_cons = []
+        # count_as = 0
+        # for i in range(self.num_agents):
+        #     ag_i = self.agents[i]
+        #     for k in range(ag_i.num_types):
+        #         con = {'type': 'ineq',
+        #                'fun': part_const,
+        #                'jac': part_const_jac,
+        #                'args': (self._irc[i][k], i, k, ag_i.num_types,
+        #                         self.t.num_a, count_as)}
+        #         part_cons.append(con)
+        #     count_as += ag_i.num_types
+        # count_as = 0
+        # for i in range(self.num_agents):
+        #     ag_i = self.agents[i]
+        #     for k in range(ag_i.num_types):
+        #         for kf in range(ag_i.num_types):
+        #             if kf != k:
+        #                 con = {'type': 'ineq',
+        #                        'fun': part_const_inc_comp,
+        #                        'jac': part_const_inc_comp_jac,
+        #                        'args': (self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types,
+        #                         self.t.num_a, count_as)}
+        #                 part_cons.append(con)
+        #     count_as += ag_i.num_types
+
+        def eval_f(a, user_data=None):
+            res = self.evaluate(a)
+            return -res['exp_u_pi_0']
+
+        def eval_grad_f(a, user_data=None):
+            res = self.evaluate(a)
+            return np.array(-res['d_exp_u_pi_0_da']).flatten()
+
+        def eval_g(x, user_data=None):
+            part_cons = []
+            count_as = 0
+            for i in range(self.num_agents):
+                ag_i = self.agents[i]
+                for k in range(ag_i.num_types):
+                    con = part_const(x, self._irc[i][k], i, k, ag_i.num_types, self.t.num_a, count_as)
+                    part_cons.append(con)
+                count_as += ag_i.num_types
+            # count_as = 0
+            # for i in range(self.num_agents):
+            #     ag_i = self.agents[i]
+            #     for k in range(ag_i.num_types):
+            #         for kf in range(ag_i.num_types):
+            #             if kf != k:
+            #                 con = part_const_inc_comp(x, self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types, self.t.num_a, count_as)
+            #                 part_cons.append(con)
+            #     count_as += ag_i.num_types
+            return np.array(part_cons).flatten()
+
+        def eval_jac_g(x, flag, user_data=None):
+            if flag:
+                return (np.array([0,0,0,0]),
+                        np.array([0,1,2,3]))
+            else:
+                part_cons = []
+                count_as = 0
+                for i in range(self.num_agents):
+                    ag_i = self.agents[i]
+                    for k in range(ag_i.num_types):
+                        con = part_const_jac(x, self._irc[i][k], i, k, ag_i.num_types, self.t.num_a, count_as)
                         part_cons.append(con)
-            count_as += ag_i.num_types
+                    count_as += ag_i.num_types
+                # count_as = 0
+                # for i in range(self.num_agents):
+                #     ag_i = self.agents[i]
+                #     for k in range(ag_i.num_types):
+                #         for kf in range(ag_i.num_types):
+                #             if kf != k:
+                #                 con = part_const_inc_comp_jac(x, self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types, self.t.num_a, count_as)
+                #                 part_cons.append(con)
+                #     count_as += ag_i.num_types
+                return np.array(part_cons).flatten()
+        
+        nvar = self.num_param
+        x_L = np.ones((nvar), dtype=np.float_) * 0.
+        x_U = np.ones((nvar), dtype=np.float_) * 2.0
+        ncon = 1
+        g_L = np.array([0.0])
+        g_U = np.array([pow(10.0,20)])
+        nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, 4, 16, eval_f, eval_grad_f, eval_g, eval_jac_g)
+        comp = 1.0e99
+        x_ret = None
+        for i in range(num_restarts):
+            x0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
+            x, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
+            if obj < comp:
+                comp = obj
+                x_ret = x
+        return x_ret
 
         # Test optimization
-        fun_min = 1e99
-        res_min = None
-        for n in range(num_restarts):
-            a0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
-            print n
-            try:
-                res = opt.minimize(obj_fun, a0, jac=True, args=(self,), method='slsqp',
-                                   bounds=bnds, constraints=part_cons, options={'disp':True})
-                if fun_min > res['fun'] and res.success:
-                    fun_min = res['fun']
-                    res_min = res
-                    print res
-                    print '*' * 80
-                    r = self.evaluate(res_min.x)
-                    print 'contract parameters:', res_min.x
-                    print r 
-                    print '*' * 80
-            except:
-                print 'Optimization failed.'
-        return res_min
+
+        # fun_min = 1e99
+        # res_min = None
+        # for n in range(num_restarts):
+        #     a0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
+        #     print n
+        #     try:
+        #         res = opt.minimize(obj_fun, a0, jac=True, args=(self,), method='slsqp',
+        #                            bounds=bnds, constraints=part_cons, options={'disp':True})
+        #         if fun_min > res['fun'] and res.success:
+        #             fun_min = res['fun']
+        #             res_min = res
+        #             print res
+        #             print '*' * 80
+        #             r = self.evaluate(res_min.x)
+        #             print 'contract parameters:', res_min.x
+        #             print r 
+        #             print '*' * 80
+        #     except:
+        #         print 'Optimization failed.'
+        # return res_min
 
     def _setup_irc(self):
         """
@@ -428,9 +498,9 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2), 
-                            QuadraticCostFunction(0.1),
-                            ExponentialUtilityFunction(0.0))
+    agent_type11 = AgentType(LinearQualityFunction(1.3, 0.1), 
+                            QuadraticCostFunction(0.0),
+                            ExponentialUtilityFunction())
 
     agent_type12 = AgentType(LinearQualityFunction(1.3, 0.1), 
                             QuadraticCostFunction(0.1),
@@ -447,12 +517,13 @@ if __name__ == '__main__':
     # print res
     #quit()
     
-    # a = np.array([3.11195514e-12, 1.41591725e+00, 1.55732629e+00, 1.00000000e+00])
+    # a = np.array([0.10999999, 0.10999999, 1.1,        0.10999999])
 
     # res = p.evaluate(a)
     res = p.optimize_contract(10)
     print 'evaluate the variables in the optimum point of the contract'
     print res
+    print p.evaluate(res)
     #print p.evaluate(res.x)
     quit()
 
@@ -460,7 +531,7 @@ if __name__ == '__main__':
 
     # Create an agent of a specific type
     agent_type11 = AgentType(LinearQualityFunction(1.5, 0.05),
-                           QuadraticCostFunction(0.05),
+                           QuadraticCostFunction(0.0),
                            ExponentialUtilityFunction())
     agent_type12 = AgentType(LinearQualityFunction(1.5, 0.2),
                             QuadraticCostFunction(0.1),
