@@ -214,8 +214,9 @@ class PrincipalProblem(object):
         Returns the optimal contract.
         """
         # Optimization bounds
-        bnds = np.array([(0.0, 2.0) for _ in range(self.num_param)])
-        #bnds = np.array([(0.0, 0.1), (0.1, 1.5), (0.7, 1.3)])
+        # bnds = np.array([(0.0, 2.0) for _ in range(self.num_param)])
+        n_bnds = self.num_param / self.t.num_a
+        bnds = np.array([(0.0, 0.05), (0.0001, .5), (0.7, 1.5), (0.0, .6)]*n_bnds)
 
         # The objective function 
         def obj_fun(a, obj):
@@ -225,42 +226,44 @@ class PrincipalProblem(object):
         # The participation constraints
         def part_const(a, irc_ik, i, k, num_types, num_a, count_as):
             # Extract the part of a that is relevant
-            a_i = a[count_as:count_as + num_a * num_types]
-            a_ik = a_i[k * num_a:(k+1) * num_a]
+            a_i    = a[count_as:count_as + num_a * num_types]
+            a_ik   = a_i[k * num_a:(k+1) * num_a]
             res_ik = irc_ik.evaluate(a_ik)
             return res_ik['exp_u_pi_e_star']
 
         # The incentive comptability constraints
-        def part_const_inc_comp(a, irc_ik, irc_ikf, i, k, kf, num_types, num_a, count_as):
+        def part_const_inc_comp(a, irc_ik, irc_ikf, i, k, kf, 
+                                num_types, num_a, count_as):
             # Extract the part of a that is relevant
-            a_i = a[count_as:count_as + num_a * num_types]
-            a_ik  = a_i[k * num_a:(k+1) * num_a]
-            a_ikf = a_i[kf * num_a:(kf+1) * num_a]
-            res_ik = irc_ik.evaluate(a_ik)
+            a_i     = a[count_as:count_as + num_a * num_types]
+            a_ik    = a_i[k * num_a:(k+1) * num_a]
+            a_ikf   = a_i[kf * num_a:(kf+1) * num_a]
+            res_ik  = irc_ik.evaluate(a_ik)
             res_ikf = irc_ikf.evaluate(a_ikf)
             return res_ik['exp_u_pi_e_star'] - res_ikf['exp_u_pi_e_star']
 
         # The Jacobian of the participation constraint
         def part_const_jac(a, irc_ik, i, k, num_types, num_a, count_as):
-            a_i = a[count_as:count_as + num_a * num_types]
-            a_ik = a_i[k * num_a:(k+1) * num_a]
+            a_i    = a[count_as:count_as + num_a * num_types]
+            a_ik   = a_i[k * num_a:(k+1) * num_a]
             res_ik = irc_ik.evaluate(a_ik)
             jac_ik = res_ik['exp_u_pi_e_star_g_a']
-            jac = np.zeros(a.shape)
+            jac    = np.zeros(a.shape)
             jac[count_as + num_a * k:count_as + num_a * (k + 1)] = jac_ik 
             return jac
 
         # The incentive comptability constraints
-        def part_const_inc_comp_jac(a, irc_ik, irc_ikf, i, k, kf, num_types, num_a, count_as):
+        def part_const_inc_comp_jac(a, irc_ik, irc_ikf, i, k, kf, 
+                                    num_types, num_a, count_as):
             # Extract the part of a that is relevant
-            a_i = a[count_as:count_as + num_a * num_types]
-            a_ik  = a_i[k * num_a:(k+1) * num_a]
-            a_ikf = a_i[kf * num_a:(kf+1) * num_a]
-            res_ik = irc_ik.evaluate(a_ik)
+            a_i     = a[count_as:count_as + num_a * num_types]
+            a_ik    = a_i[k * num_a:(k+1) * num_a]
+            a_ikf   = a_i[kf * num_a:(kf+1) * num_a]
+            res_ik  = irc_ik.evaluate(a_ik)
             res_ikf = irc_ikf.evaluate(a_ikf)
-            jac_ik = res_ik['exp_u_pi_e_star_g_a']
+            jac_ik  = res_ik['exp_u_pi_e_star_g_a']
             jac_ikf = res_ikf['exp_u_pi_e_star_g_a']
-            jac = np.zeros(a.shape)
+            jac     = np.zeros(a.shape)
             jac[count_as + num_a * k:count_as + num_a * (k + 1)] = jac_ik 
             jac[count_as + num_a * kf:count_as + num_a * (kf + 1)] = jac_ikf
             return jac
@@ -305,59 +308,92 @@ class PrincipalProblem(object):
             for i in range(self.num_agents):
                 ag_i = self.agents[i]
                 for k in range(ag_i.num_types):
-                    con = part_const(x, self._irc[i][k], i, k, ag_i.num_types, self.t.num_a, count_as)
+                    con = part_const(x, self._irc[i][k], i, k,
+                                     ag_i.num_types, self.t.num_a,
+                                     count_as)
                     part_cons.append(con)
                 count_as += ag_i.num_types
-            # count_as = 0
-            # for i in range(self.num_agents):
-            #     ag_i = self.agents[i]
-            #     for k in range(ag_i.num_types):
-            #         for kf in range(ag_i.num_types):
-            #             if kf != k:
-            #                 con = part_const_inc_comp(x, self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types, self.t.num_a, count_as)
-            #                 part_cons.append(con)
-            #     count_as += ag_i.num_types
+            count_as = 0
+            for i in range(self.num_agents):
+                ag_i = self.agents[i]
+                for k in range(ag_i.num_types):
+                    for kf in range(ag_i.num_types):
+                        if kf != k:
+                            con = part_const_inc_comp(x, self._irc[i][k],
+                                                      self._irc[i][kf], i,
+                                                      k, kf, ag_i.num_types,
+                                                      self.t.num_a, count_as)
+                            part_cons.append(con)
+                count_as += ag_i.num_types
             return np.array(part_cons).flatten()
+
+        nvar = self.num_param
+        x_L = np.array(bnds[:,0], dtype=np.float_)
+        x_U = np.array(bnds[:,1], dtype=np.float_)
+        test = np.array(np.zeros(nvar))
+        self.ncon = eval_g(test).shape[0]
+
+        g_L = np.array([0.0]*self.ncon, dtype=np.float_)
+        g_U = np.array([pow(10.0,20)]*self.ncon, dtype=np.float_)
 
         def eval_jac_g(x, flag, user_data=None):
             if flag:
-                return (np.array([0,0,0,0]),
-                        np.array([0,1,2,3]))
+                return (np.array([[_]*self.num_param for _ in range(self.ncon)]).flatten(),
+                        np.array(list(np.arange(self.num_param))*self.ncon))
             else:
                 part_cons = []
                 count_as = 0
                 for i in range(self.num_agents):
                     ag_i = self.agents[i]
                     for k in range(ag_i.num_types):
-                        con = part_const_jac(x, self._irc[i][k], i, k, ag_i.num_types, self.t.num_a, count_as)
+                        con = part_const_jac(x, self._irc[i][k], 
+                                             i, k, ag_i.num_types,
+                                             self.t.num_a, count_as)
                         part_cons.append(con)
                     count_as += ag_i.num_types
-                # count_as = 0
-                # for i in range(self.num_agents):
-                #     ag_i = self.agents[i]
-                #     for k in range(ag_i.num_types):
-                #         for kf in range(ag_i.num_types):
-                #             if kf != k:
-                #                 con = part_const_inc_comp_jac(x, self._irc[i][k], self._irc[i][kf], i, k, kf, ag_i.num_types, self.t.num_a, count_as)
-                #                 part_cons.append(con)
-                #     count_as += ag_i.num_types
+                count_as = 0
+                for i in range(self.num_agents):
+                    ag_i = self.agents[i]
+                    for k in range(ag_i.num_types):
+                        for kf in range(ag_i.num_types):
+                            if kf != k:
+                                con = part_const_inc_comp_jac(x, 
+                                                              self._irc[i][k],
+                                                              self._irc[i][kf], 
+                                                              i, k, kf, 
+                                                              ag_i.num_types, 
+                                                              self.t.num_a, count_as)
+                                part_cons.append(con)
+                    count_as += ag_i.num_types
                 return np.array(part_cons).flatten()
-        
-        nvar = self.num_param
-        x_L = np.ones((nvar), dtype=np.float_) * 0.
-        x_U = np.ones((nvar), dtype=np.float_) * 2.0
-        ncon = 1
-        g_L = np.array([0.0])
-        g_U = np.array([pow(10.0,20)])
-        nlp = pyipopt.create(nvar, x_L, x_U, ncon, g_L, g_U, 4, 16, eval_f, eval_grad_f, eval_g, eval_jac_g)
+
+        nlp = pyipopt.create(nvar, x_L, x_U, self.ncon, g_L, g_U,
+                             self.num_param * self.ncon, nvar**2, eval_f,
+                             eval_grad_f, eval_g, eval_jac_g)
+        nlp.int_option('max_iter', 1000)
+        nlp.int_option('print_frequency_iter',100)
+        nlp.num_option('tol', 1e-4)
+        # nlp.str_option('linear_solver','ma27')
+
         comp = 1.0e99
         x_ret = None
+        x0 = np.array(np.zeros(nvar))
         for i in range(num_restarts):
-            x0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)
+            print 'restart number:', i+1
+            # x0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)    
+            n_iter = self.num_param / self.t.num_a
+            for l in range(n_iter):
+                x0[self.t.num_a*l  ] = np.random.uniform(0.0, 0.05)
+                x0[self.t.num_a*l+1] = np.random.uniform(0.0001, .5)
+                x0[self.t.num_a*l+2] = np.random.uniform(0.7, 2.5)
+                x0[self.t.num_a*l+3] = np.random.uniform(0.0, 0.5)
+
             x, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
+
             if obj < comp:
                 comp = obj
                 x_ret = x
+                print x
         return x_ret
 
         # Test optimization
@@ -498,33 +534,27 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(1.3, 0.1), 
-                            QuadraticCostFunction(0.0),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1), 
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction())
 
-    agent_type12 = AgentType(LinearQualityFunction(1.3, 0.1), 
-                            QuadraticCostFunction(0.1),
-                            ExponentialUtilityFunction(2.0))
+    agent_type12 = AgentType(LinearQualityFunction(1.2, 0.3),
+                            QuadraticCostFunction(0.02),
+                            ExponentialUtilityFunction(.0))
     agents = Agent([agent_type11])
 
-    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=20.)
+
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=50.),
+                        RequirementValueFunction(1, gamma=20.),
                         agents, t)
     p.compile()
-    # a = np.array([0., 0.5, 1.0, 0.05])
-    # res = p.evaluate(a)
-    # print res
-    #quit()
-    
-    # a = np.array([0.10999999, 0.10999999, 1.1,        0.10999999])
 
     # res = p.evaluate(a)
-    res = p.optimize_contract(10)
+    res = p.optimize_contract(1000)
     print 'evaluate the variables in the optimum point of the contract'
     print res
     print p.evaluate(res)
-    #print p.evaluate(res.x)
     quit()
 
 
