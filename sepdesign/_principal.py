@@ -18,6 +18,7 @@ from _value_functions import ValueFunction
 from _transfer_functions import TransferFunction
 from _individual_rationality import IndividualRationality
 import pyipopt
+from pyDOE import lhs
 
 # Flattens a list of lists
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -378,18 +379,19 @@ class PrincipalProblem(object):
         comp = 1.0e99
         x_ret = None
         x0 = np.array(np.zeros(nvar))
+        samples = lhs(self.num_param, samples = num_restarts, criterion = 'corr')
+        samples = bnds[:,0] + samples*(bnds[:,1]-bnds[:,0])
         for i in range(num_restarts):
             print 'restart number:', i+1
             # x0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)    
             n_iter = self.num_param / self.t.num_a
-            for l in range(n_iter):
-                x0[self.t.num_a*l  ] = np.random.uniform(0.0, 0.05)
-                x0[self.t.num_a*l+1] = np.random.uniform(0.0001, .5)
-                x0[self.t.num_a*l+2] = np.random.uniform(0.7, 2.5)
-                x0[self.t.num_a*l+3] = np.random.uniform(0.0, 0.5)
-
+            # for l in range(n_iter):
+                # x0[self.t.num_a*l  ] = np.random.uniform(0.0, 0.05)
+                # x0[self.t.num_a*l+1] = np.random.uniform(0.0001, .5)
+                # x0[self.t.num_a*l+2] = np.random.uniform(0.7, 2.5)
+                # x0[self.t.num_a*l+3] = np.random.uniform(0.0, 0.5)
+            x0 = samples[i,:]
             x, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
-
             if obj < comp:
                 comp = obj
                 x_ret = x
@@ -546,12 +548,12 @@ if __name__ == '__main__':
     t = RequirementPlusIncentiveTransferFunction(gamma=20.)
 
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=20.),
+                        RequirementValueFunction(1, gamma=50.),
                         agents, t)
     p.compile()
 
     # res = p.evaluate(a)
-    res = p.optimize_contract(1000)
+    res = p.optimize_contract(100)
     print 'evaluate the variables in the optimum point of the contract'
     print res
     print p.evaluate(res)
