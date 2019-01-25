@@ -17,6 +17,7 @@ from _utility_functions import UtilityFunction
 from _value_functions import ValueFunction
 from _transfer_functions import TransferFunction
 from _individual_rationality import IndividualRationality
+from _function import *
 import pyipopt
 from pyDOE import lhs
 
@@ -102,9 +103,9 @@ class PrincipalProblem(object):
                 t_qs[i].append(theano.clone(q_base.t_f,
                     replace={q_base.t_x[0]: t_e_stars[i][k],
                              q_base.t_x[1]: t_xis[i]}))
-                t_ts[i].append(theano.clone(t.t_f,
-            replace={t.t_x[0]: t_qs[i][k],
-                     t.t_x[1]: t_as[i][k]}))
+                t_ts[i].append(theano.clone(self.t.t_f,
+            replace={self.t.t_x[0]: t_qs[i][k],
+                     self.t.t_x[1]: t_as[i][k]}))
         # For all possible combinations of agent types
         # Expected utility functions
         t_sum_u_over_comb = T.zeros((1,))
@@ -210,12 +211,13 @@ class PrincipalProblem(object):
         res['d_exp_u_pi_0_da'] = np.hstack(d_exp_u_da_list)
         return res
 
-    def optimize_contract(self, num_restarts=10):
+    def optimize_contract(self, *args):
         """
         Returns the optimal contract.
         """
         # Optimization bounds
         # bnds = np.array([(0.0, 2.0) for _ in range(self.num_param)])
+
         n_bnds = self.num_param / self.t.num_a
         bnds = np.array([(0.0, 0.05), (0.0001, .5), (0.7, 1.5), (0.0, .6)]*n_bnds)
 
@@ -379,12 +381,24 @@ class PrincipalProblem(object):
         comp = 1.0e99
         x_ret = None
         x0 = np.array(np.zeros(nvar))
-        samples = lhs(self.num_param, samples = num_restarts, criterion = 'corr')
+        if not args:
+            num_restarts = 10
+            samples = lhs(self.num_param, samples = num_restarts, criterion = 'c')
+        elif len(args) == 1:
+            num_restarts = args[0]
+            samples = lhs(self.num_param, samples = num_restarts, criterion = 'c')
+        else:
+            num_restarts_total  = args[0]
+            samples             = args[1]
+            ind_seed            = np.array(args[2]).flatten()
+            samples             = samples[ind_seed, :]
+            num_restarts        = np.array(ind_seed).flatten().shape[0]
         samples = bnds[:,0] + samples*(bnds[:,1]-bnds[:,0])
+        final_result = {}
         for i in range(num_restarts):
             print 'restart number:', i+1
             # x0 = bnds[:, 0] + (bnds[:, 1] - bnds[:, 0]) * np.random.rand(self.num_param)    
-            n_iter = self.num_param / self.t.num_a
+            # n_iter = self.num_param / self.t.num_a
             # for l in range(n_iter):
                 # x0[self.t.num_a*l  ] = np.random.uniform(0.0, 0.05)
                 # x0[self.t.num_a*l+1] = np.random.uniform(0.0001, .5)
@@ -396,7 +410,9 @@ class PrincipalProblem(object):
                 comp = obj
                 x_ret = x
                 print x
-        return x_ret
+                final_result['x']   = x_ret
+                final_result['obj'] = -obj
+        return final_result
 
         # Test optimization
 
@@ -430,7 +446,7 @@ class PrincipalProblem(object):
         for i in range(self.num_agents):
             for k in range(self.agents[i].num_types):
                 irc[i].append(
-                        IndividualRationality(self.agents[i].agent_types[k], t))
+                        IndividualRationality(self.agents[i].agent_types[k], self.t))
         self._irc = irc
 
     def _agent_type_range(self):
@@ -553,10 +569,10 @@ if __name__ == '__main__':
     p.compile()
 
     # res = p.evaluate(a)
-    res = p.optimize_contract(100)
+    res = p.optimize_contract(10, lhs(4, 10), [1,2,3])
     print 'evaluate the variables in the optimum point of the contract'
     print res
-    print p.evaluate(res)
+    print p.evaluate(res['x'])
     quit()
 
 
@@ -740,3 +756,5 @@ if __name__ == '__main__':
     print 'Test cases for N=2, M=1'
     print 'expected utility check for N=2, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
     quit()
+    #[2.58410778e-05 1.00850982e-01 1.41734080e+00 3.03885263e-01]
+    #{'d_exp_u_pi_0_da': array([-1.        , -0.73426853,  0.49732821, -0.08538814]), 'exp_u_pi_agents': [[2.5841077197397968e-05]], 'e_stars': [1.0], 'exp_u_pi_0': array(0.8999723)}
