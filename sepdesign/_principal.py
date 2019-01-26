@@ -219,7 +219,10 @@ class PrincipalProblem(object):
         # bnds = np.array([(0.0, 2.0) for _ in range(self.num_param)])
 
         n_bnds = self.num_param / self.t.num_a
-        bnds = np.array([(0.0, 0.05), (0.0001, .5), (0.7, 1.5), (0.0, .6)]*n_bnds)
+        if self.t.num_a == 4:
+            bnds = np.array([(0.0, 0.05), (0.0001, .5), (0.7, 1.5), (0.0, .6)]*n_bnds)
+        else:
+            bnds = np.array([(0.0, 0.05), (0.0001, .8), (0.7, 1.5)]*n_bnds)
 
         # The objective function 
         def obj_fun(a, obj):
@@ -373,9 +376,9 @@ class PrincipalProblem(object):
         nlp = pyipopt.create(nvar, x_L, x_U, self.ncon, g_L, g_U,
                              self.num_param * self.ncon, nvar**2, eval_f,
                              eval_grad_f, eval_g, eval_jac_g)
-        nlp.int_option('max_iter', 1000)
+        nlp.int_option('max_iter', 2000)
         nlp.int_option('print_frequency_iter',100)
-        nlp.num_option('tol', 1e-4)
+        nlp.num_option('tol', 1e-6)
         # nlp.str_option('linear_solver','ma27')
 
         comp = 1.0e99
@@ -552,7 +555,7 @@ if __name__ == '__main__':
 
     # Creat an example to test the optimize_contract
 
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1), 
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2), 
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction())
 
@@ -561,14 +564,16 @@ if __name__ == '__main__':
                             ExponentialUtilityFunction(.0))
     agents = Agent([agent_type11])
 
-    t = RequirementPlusIncentiveTransferFunction(gamma=20.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=30.)
 
     p = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1, gamma=50.),
                         agents, t)
     p.compile()
-
-    # res = p.evaluate(a)
+    a = np.array([0.01186108, 0.08077786, 1.25130366, 0.23217116])
+    res = p.evaluate(a)
+    print res
+    quit()
     res = p.optimize_contract(10, lhs(4, 10), [1,2,3])
     print 'evaluate the variables in the optimum point of the contract'
     print res
