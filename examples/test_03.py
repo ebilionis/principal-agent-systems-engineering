@@ -16,13 +16,13 @@ import matplotlib.pyplot as plt
 from mpi4py import MPI
 
 
-num_restarts = 1000
+num_restarts = 2000
 comm = MPI.COMM_WORLD
 rank = comm.rank
 size = comm.size
 
 if rank == 0:
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.05),
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction())
     
@@ -61,17 +61,5 @@ if rank == 0:
     final_result = results_all[np.argmax([results_all[i][0]['obj'] for i in range(size)])]
     print final_result
 
-
-
-# results
-#[{'x': array([0.01186108, 0.08077786, 1.25130366, 0.23217116]), 'obj': 0.8502802394124376}]
-
-
-
-
-
-
-
-
-
-
+#results
+#[{'x': array([0.0186288 , 0.05726905, 0.97723873, 0.07630824]), 'obj': 0.9039183855949247}]

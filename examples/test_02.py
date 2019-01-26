@@ -16,19 +16,19 @@ import matplotlib.pyplot as plt
 from mpi4py import MPI
 
 
-num_restarts = 1000
+num_restarts = 4000
 comm = MPI.COMM_WORLD
 rank = comm.rank
 size = comm.size
 
 if rank == 0:
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.2),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1),
                             QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction())
     
     agents = Agent([agent_type11])
     
-    t = RequirementPlusIncentiveTransferFunction(gamma=30.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=40.)
 
     p = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1, gamma=50.),
@@ -64,13 +64,7 @@ if rank == 0:
 
 
 # results
-#[{'x': array([0.01186108, 0.08077786, 1.25130366, 0.23217116]), 'obj': 0.8502802394124376}]
-
-
-
-
-
-
+#[{'x': array([9.07922884e-06, 8.10932003e-02, 1.35456804e+00, 1.79477500e-01]), 'obj': 0.8999890303662064}]
 
 
 
