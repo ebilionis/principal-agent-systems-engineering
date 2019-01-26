@@ -22,9 +22,9 @@ rank = comm.rank
 size = comm.size
 
 if rank == 0:
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1),
-                            QuadraticCostFunction(0.1),
-                            ExponentialUtilityFunction())
+    agent_type11 = AgentType(LinearQualityFunction(1.6, 0.2),
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(0))
     
     agents = Agent([agent_type11])
     
@@ -61,10 +61,6 @@ if rank == 0:
     final_result = results_all[np.argmax([results_all[i][0]['obj'] for i in range(size)])]
     print final_result
 
-
-
-# results
-#[{'x': array([8.94681561e-04, 2.72154026e-02, 1.08459066e+00, 1.75248226e-01]), 'obj': 0.8991034555767676}]
-
-
+#results
+#[{'x': array([0.00932514, 0.03495128, 0.85883853, 0.24773604]), 'obj': 0.7735319508795262}]
 

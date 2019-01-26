@@ -22,18 +22,18 @@ rank = comm.rank
 size = comm.size
 
 if rank == 0:
-    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.1),
-                            QuadraticCostFunction(0.1),
-                            ExponentialUtilityFunction())
+    agent_type11 = AgentType(LinearQualityFunction(2.0, 0.1),
+                            QuadraticCostFunction(0.05),
+                            ExponentialUtilityFunction(0))
     
     agents = Agent([agent_type11])
     
-    t = RequirementPlusIncentiveTransferFunction(gamma=30.)
+    t = RequirementTransferFunction(gamma=30.)
 
     p = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1, gamma=50.),
                         agents, t)
-    samples = lhs(4, num_restarts, 'c')
+    samples = lhs(3, num_restarts, 'c')
     # samples   = np.random.rand(num_restarts, 4)
     jobs = list(range(num_restarts))
     jobs = split(jobs, size)
@@ -61,10 +61,7 @@ if rank == 0:
     final_result = results_all[np.argmax([results_all[i][0]['obj'] for i in range(size)])]
     print final_result
 
-
-
-# results
-#[{'x': array([8.94681561e-04, 2.72154026e-02, 1.08459066e+00, 1.75248226e-01]), 'obj': 0.8991034555767676}]
-
+#results
+#[{'x': array([0.00659469, 0.02612205, 1.16570958]), 'obj': 0.9683452104038064}]
 
 
