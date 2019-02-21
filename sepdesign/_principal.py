@@ -11,15 +11,22 @@ import design
 import numpy as np
 import sys
 import scipy.optimize as opt
-from _types import AgentType
-from _agent import Agent
-from _utility_functions import UtilityFunction
-from _value_functions import ValueFunction
-from _transfer_functions import TransferFunction
-from _individual_rationality import IndividualRationality
-from _function import *
-import pyipopt
-from pyDOE import lhs
+from sepdesign._types import AgentType
+from sepdesign._agent import Agent
+from sepdesign._utility_functions import UtilityFunction
+from sepdesign._value_functions import ValueFunction
+from sepdesign._transfer_functions import TransferFunction
+from sepdesign._individual_rationality import IndividualRationality
+from sepdesign._function import *
+import warnings
+try:
+    import pyipopt
+except:
+    warnings.warn('*** Could not find pyipopt. ***')
+try:
+    from pyDOE import lhs
+except:
+    warnings.warn('*** Could not find pyDOE. ***')
 
 # Flattens a list of lists
 flatten = lambda l: [item for sublist in l for item in sublist]
@@ -372,14 +379,14 @@ class PrincipalProblem(object):
         samples = bnds[:,0] + samples*(bnds[:,1]-bnds[:,0])
         final_result = {}
         for i in range(num_restarts):
-            print 'restart number:', i+1
+            print(('restart number:', i+1))
             x0 = samples[i,:]
             x, zl, zu, constraint_multipliers, obj, status = nlp.solve(x0)
-            print 'status', status
+            print(('status', status))
             if obj < comp:
                 comp = obj
                 x_ret = x
-                print x
+                print(x)
                 final_result['x']   = x_ret
                 final_result['obj'] = -obj
         return final_result
@@ -423,7 +430,7 @@ class PrincipalProblem(object):
         """
         Returns an iterator over all possible combinations of agent types.
         """
-        return itertools.product(*(range(a.num_types) for a in self.agents))
+        return itertools.product(*(list(range(a.num_types)) for a in self.agents))
 
 
 
@@ -512,11 +519,11 @@ class PrincipalProblem(object):
 
 
 if __name__ == '__main__':
-    from _quality_functions import *
-    from _cost_functions import *
-    from _utility_functions import *
-    from _transfer_functions import *
-    from _value_functions import *
+    from ._quality_functions import *
+    from ._cost_functions import *
+    from ._utility_functions import *
+    from ._transfer_functions import *
+    from ._value_functions import *
     import numdifftools as nd
 
 
@@ -539,12 +546,12 @@ if __name__ == '__main__':
     p.compile()
     a = [1.54857533e-06, 8.96740975e-03, 1.21648850e+00, 7.43227452e-03]
     res = p.evaluate(a)
-    print res
+    print(res)
     quit()
     res = p.optimize_contract()
-    print 'evaluate the variables in the optimum point of the contract'
-    print res
-    print p.evaluate(res['x'])
+    print('evaluate the variables in the optimum point of the contract')
+    print(res)
+    print((p.evaluate(res['x'])))
     quit()
 
 
@@ -600,12 +607,12 @@ if __name__ == '__main__':
     t1.compile()
     a = [1.54857533e-06, 8.96740975e-03, 1.21648850e+00, 7.43227452e-03]
     result = p.evaluate(a)
-    print result
+    print(result)
     quit()
     mc = np.sum(v1(q1(result['e_stars'][0],xi)) - \
                 t1(q1(result['e_stars'][0], xi), a)) / num_xis 
-    print 'Test cases for N=1, M=1:'
-    print 'expected utility check for N=1, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    print('Test cases for N=1, M=1:')
+    print(('expected utility check for N=1, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])))
     exp_u = p.exp_u_raw
     exp_u.compile()
     p._setup_irc
@@ -621,8 +628,8 @@ if __name__ == '__main__':
     gf3 = nd.Gradient(f3)
 
     dexp_numerical = gf2 * gf3(a) + gf1(a)
-    print 'dE[u]/da11 check for N=1, M=1: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'])
-    print '##########'
+    print(('dE[u]/da11 check for N=1, M=1: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'])))
+    print('##########')
     # Test2: N=1, M=2
 
     agent_type11 = AgentType(LinearQualityFunction(1.2, 0.2), 
@@ -659,8 +666,8 @@ if __name__ == '__main__':
     temp2 = 0.5*(v1(q2(result['e_stars'][1],xi)) - \
                 t1(q2(result['e_stars'][1], xi), a2))
     mc = np.sum(temp1 + temp2) / num_xis 
-    print 'Test cases for N=1, M=2'
-    print 'expected utility check for N=1, M=2: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    print('Test cases for N=1, M=2')
+    print(('expected utility check for N=1, M=2: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])))
     
     exp_u = p.exp_u_raw
     exp_u.compile()
@@ -678,7 +685,7 @@ if __name__ == '__main__':
            f2(result['e_stars'][0]-1.0e-6, result['e_stars'][1]))/(2.e-6)
     gf3 = nd.Gradient(f3)
     dexp_numerical = gf2 * gf3(a1) + gf1(a1)
-    print 'dE[u]/da_11 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][0])
+    print(('dE[u]/da_11 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][0])))
 
     f1 = lambda _a2: exp_u(result['e_stars'][0], result['e_stars'][1], a1, _a2)
     f2 = lambda _e1, _e2: exp_u(_e1, _e2, a1, a2)
@@ -688,8 +695,8 @@ if __name__ == '__main__':
            f2(result['e_stars'][0], result['e_stars'][1]-1.e-6))/(2.e-6)
     gf3 = nd.Gradient(f3)
     dexp_numerical = gf2 * gf3(a2) + gf1(a2)
-    print 'dE[u]/da_12 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][1])
-    print '##########'
+    print(('dE[u]/da_12 check for N=1, M=2: Numerical derivative: {}, AD theano: {}'.format(dexp_numerical, result['d_exp_u_pi_0_da'][1])))
+    print('##########')
 
     # Test3: N=2, M=1
 
@@ -727,8 +734,8 @@ if __name__ == '__main__':
     temp = v1(q1(result['e_stars'][0], xi_1), q2(result['e_stars'][1], xi_2)) - \
             (t1(q1(result['e_stars'][0], xi_1), a1) + t1(q2(result['e_stars'][1], xi_2), a2))
     mc = np.sum(temp) / num_xis 
-    print 'Test cases for N=2, M=1'
-    print 'expected utility check for N=2, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])
+    print('Test cases for N=2, M=1')
+    print(('expected utility check for N=2, M=1: Monte Carlo: {}, Collocation: {}'.format(mc, result['exp_u_pi_0'])))
     quit()
     #[2.58410778e-05 1.00850982e-01 1.41734080e+00 3.03885263e-01]
     #{'d_exp_u_pi_0_da': array([-1.        , -0.73426853,  0.49732821, -0.08538814]), 'exp_u_pi_agents': [[2.5841077197397968e-05]], 'e_stars': [1.0], 'exp_u_pi_0': array(0.8999723)}

@@ -7,7 +7,7 @@ Utility functions.
 _all__ = ["UtilityFunction", "ExponentialUtilityFunction"]
 import theano
 import theano.tensor as T
-from _function import Function
+from sepdesign._function import Function
 
 
 class UtilityFunction(Function):
@@ -71,9 +71,9 @@ if __name__ == '__main__':
     u_averse  = ExponentialUtilityFunction(risk_preference = -2.0)
     u_neutral = ExponentialUtilityFunction(risk_preference =  0.0)
     u_prone   = ExponentialUtilityFunction(risk_preference =  2.0)
-    print str(u_averse)
-    print str(u_neutral)
-    print str(u_prone)
+    print(str(u_averse))
+    print(str(u_neutral))
+    print(str(u_prone))
 
     u_averse.compile()
     u_neutral.compile()

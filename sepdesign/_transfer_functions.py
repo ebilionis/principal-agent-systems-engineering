@@ -11,7 +11,7 @@ __all__ = ['TransferFunction', 'RequirementTransferFunction',
 import theano
 import theano.tensor as T
 import numpy as np
-from _function import Function
+from sepdesign._function import Function
 
 
 class TransferFunction(Function):
@@ -132,15 +132,15 @@ if __name__ == '__main__':
     tr.compile()
     a1 = [0.05, 0.3, 1.]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
-        print 'tr(%1.2f, [%1.2f, %1.2f, %1.2f]) = %1.2f' \
-                % (q, a1[0], a1[1], a1[2], tr([q], a1))
+        print('tr(%1.2f, [%1.2f, %1.2f, %1.2f]) = %1.2f' \
+                % (q, a1[0], a1[1], a1[2], tr([q], a1)))
 
     trpi = RequirementPlusIncentiveTransferFunction()
     trpi.compile()
     a2 = [0.05, 0.3, 1., 0.6]
     for q in [0.1, 0.6, 0.8, 1., 1.2]:
-        print 'tr(%1.2f, [%1.2f, %1.2f, %1.2f, %1.2f]) = %1.2f' \
-                % (q, a2[0], a2[1], a2[2], a2[3], trpi([q], a2))
+        print('tr(%1.2f, [%1.2f, %1.2f, %1.2f, %1.2f]) = %1.2f' \
+                % (q, a2[0], a2[1], a2[2], a2[3], trpi([q], a2)))
 
     # Let's plot them
     import matplotlib.pyplot as plt

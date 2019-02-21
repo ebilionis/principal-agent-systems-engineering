@@ -9,7 +9,7 @@ __all__ = ['CostFunction', 'LinearCostFunction', 'QuadraticCostFunction']
 
 import theano
 import theano.tensor as T
-from _function import Function
+from sepdesign._function import Function
 
 
 class CostFunction(Function):
@@ -98,11 +98,11 @@ class QuadraticCostFunction(CostFunction):
 
 if __name__ == '__main__':
     c = LinearCostFunction(0.5)
-    print 'c to str:', str(c)
+    print('c to str:', str(c))
     c.compile()
-    print 'Linear cost : c(0.5) = %1.2f' % c(0.5)
+    print('Linear cost : c(0.5) = %1.2f' % c(0.5))
     c = QuadraticCostFunction(0.5)
-    print 'c to str:', str(c)
+    print('c to str:', str(c))
     c.compile()
-    print 'Quadratic cost : c(0.5) = %1.3f' % c(0.5)
+    print('Quadratic cost : c(0.5) = %1.3f' % c(0.5))
 

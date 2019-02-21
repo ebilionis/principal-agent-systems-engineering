@@ -5,11 +5,12 @@ TODO SALAR: WRITE
 """
 
 
-from _function import *
-from _cost_functions import *
-from _quality_functions import *
-from _transfer_functions import *
-from _utility_functions import *
-from _types import *
-from _agent import *
-from _value_functions import *
+from sepdesign._function import *
+from sepdesign._cost_functions import *
+from sepdesign._quality_functions import *
+from sepdesign._transfer_functions import *
+from sepdesign._utility_functions import *
+from sepdesign._types import *
+from sepdesign._agent import *
+from sepdesign._value_functions import *
+from sepdesign._principal import *

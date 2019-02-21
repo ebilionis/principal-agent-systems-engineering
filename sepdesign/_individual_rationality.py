@@ -11,8 +11,8 @@ import theano
 import theano.tensor as T
 import scipy.optimize as opt
 import numpy as np
-from _types import AgentType
-from _transfer_functions import TransferFunction
+from sepdesign._types import AgentType
+from sepdesign._transfer_functions import TransferFunction
 
 
 class IndividualRationality(object):
@@ -152,15 +152,15 @@ if __name__ == '__main__':
     sns.set_context('paper')
     import numpy as np
     import numdifftools as nd
-    from _quality_functions import *
-    from _cost_functions import *
-    from _utility_functions import *
-    from _transfer_functions import *
+    from ._quality_functions import *
+    from ._cost_functions import *
+    from ._utility_functions import *
+    from ._transfer_functions import *
 
     # Create an agent of a specific type
     for cost_coef in [0.0, 0.2, 0.7]:
-        print '*' * 80
-        print 'COST COEF: %1.2f' % cost_coef
+        print('*' * 80)
+        print('COST COEF: %1.2f' % cost_coef)
         agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
                                QuadraticCostFunction(cost_coef),
                                ExponentialUtilityFunction(2.0))
@@ -180,15 +180,15 @@ if __name__ == '__main__':
         res = ir.evaluate(a)
         # The optimal effort is here
         e_star = res['e_star']
-        print 'e_star = %1.2f' % e_star
+        print('e_star = %1.2f' % e_star)
         # The expected utility at the optimal effort
         exp_u_pi_e_star = res['exp_u_pi_e_star']
-        print 'E_i[U_i(Pi_i(e_star; a))] = %1.2f' % exp_u_pi_e_star
+        print('E_i[U_i(Pi_i(e_star; a))] = %1.2f' % exp_u_pi_e_star)
         # Let's compare e_star_g_e to the numerical derivative
         e_star_g_a = res['e_star_g_a']
         func = lambda _a: ir.evaluate(_a)['e_star']
         func_g_a = nd.Gradient(func)
         n_e_star_g_a = func_g_a(a)
-        print 'e_star_g_a = ', e_star_g_a
-        print 'n_e_star_g_a =', n_e_star_g_a
-        print 'Close?', np.allclose(e_star_g_a, n_e_star_g_a, atol=1e-3)
+        print('e_star_g_a = ', e_star_g_a)
+        print('n_e_star_g_a =', n_e_star_g_a)
+        print('Close?', np.allclose(e_star_g_a, n_e_star_g_a, atol=1e-3))

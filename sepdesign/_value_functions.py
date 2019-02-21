@@ -9,7 +9,7 @@ __all__ = ['ValueFunction', 'RequirementValueFunction',
 import theano
 import theano.tensor as T
 import numpy as np
-from _function import Function
+from sepdesign._function import Function
 
 
 class ValueFunction(Function):

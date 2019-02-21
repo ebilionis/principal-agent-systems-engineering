@@ -9,7 +9,7 @@ __all__ = ['QualityFunction', 'LinearQualityFunction']
 
 import theano
 import theano.tensor as T
-from _function import Function
+from sepdesign._function import Function
 
 
 class QualityFunction(Function):
@@ -89,8 +89,8 @@ class LinearQualityFunction(QualityFunction):
 if __name__ == '__main__':
     import numpy as np
     q = LinearQualityFunction(0.2, 0.1)
-    print 'q to str:', str(q)
+    print(('q to str:', str(q)))
     q.compile()
     e = 0.5
     xi = np.random.randn(1)
-    print 'q(%1.2f, %1.2f) = %1.2f' % (e, xi, q(e, xi))
+    print(('q(%1.2f, %1.2f) = %1.2f' % (e, xi, q(e, xi))))

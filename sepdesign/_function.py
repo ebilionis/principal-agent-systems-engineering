@@ -102,25 +102,25 @@ if __name__ == '__main__':
     t_x = T.dscalar('x')
     t_g = t_x ** 2
     g = Function(t_x, t_g)
-    print 'g to str:', str(g)
+    print('g to str:', str(g))
     # This will fail because the function is not compiled
     try:
         g(2.)
     except Exception as e:
-        print 'ERROR:', e
+        print('ERROR:', e)
     g.compile()
     # This will work because the function is compiled
-    print 'g(2.00) = %1.2f' % g(2.)
+    print('g(2.00) = %1.2f' % g(2.))
     # Now let's test the composition with another function
     t_x1 = T.dscalar('x1')
     t_f = t_x1 + 3.0
     f = Function(t_x1, t_f)
     f.compile()
-    print 'f(4.00) = %1.2f' % f(4.)
+    print('f(4.00) = %1.2f' % f(4.))
     # Compose f with g
     fg = f.compose(g)
     fg.compile()
-    print 'f(g(2.00)) = %1.2f' % fg(2.)
+    print('f(g(2.00)) = %1.2f' % fg(2.))
 
     # Let's test now the case of a function with two inputs (like the quality)
     t_e = T.dscalar('x')
@@ -129,9 +129,9 @@ if __name__ == '__main__':
     q = Function([t_e, t_xi], t_q)
     q.compile()
     xi = np.random.randn()
-    print 'q(0.4, %1.2f) = %1.2f' % (xi, q(0.5, xi))
+    print('q(0.4, %1.2f) = %1.2f' % (xi, q(0.5, xi)))
     
     # Let's test the gradient of the function
     dqde = q.grad(t_xi)
     dqde.compile()
-    print 'dq/de(0.4, %1.2f) = %1.2f' % (xi, dqde(0.5, xi))
+    print('dq/de(0.4, %1.2f) = %1.2f' % (xi, dqde(0.5, xi)))

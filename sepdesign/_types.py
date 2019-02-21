@@ -10,11 +10,11 @@ __all__ = ['AgentType']
 import theano
 import theano.tensor as T
 import numpy as np
-from _function import Function
-from _quality_functions import QualityFunction
-from _cost_functions import CostFunction
-from _utility_functions import UtilityFunction
-from _transfer_functions import TransferFunction
+from sepdesign._function import Function
+from sepdesign._quality_functions import QualityFunction
+from sepdesign._cost_functions import CostFunction
+from sepdesign._utility_functions import UtilityFunction
+from sepdesign._transfer_functions import TransferFunction
 
 
 class AgentType(object):
@@ -149,16 +149,16 @@ if __name__ == '__main__':
     sns.set_style('white')
     sns.set_context('paper')
     import numpy as np
-    from _quality_functions import *
-    from _cost_functions import *
-    from _utility_functions import *
-    from _transfer_functions import *
+    from ._quality_functions import *
+    from ._cost_functions import *
+    from ._utility_functions import *
+    from ._transfer_functions import *
 
     # Create an agent of a specific type
     agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
                            QuadraticCostFunction(0.1),
                            ExponentialUtilityFunction(2.0))
-    print 'AgentType to str:', str(agent_type)
+    print('AgentType to str:', str(agent_type))
 
     # Create a transfer function
     t = RequirementPlusIncentiveTransferFunction()

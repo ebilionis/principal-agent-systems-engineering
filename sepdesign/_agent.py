@@ -7,7 +7,7 @@ A class representing an agent that could be of several types.
 __all__ = ['Agent']
 
 
-from _types import AgentType
+from sepdesign._types import AgentType
 import numpy as np
 
 
@@ -62,20 +62,20 @@ class Agent(object):
 
 
 if __name__ == '__main__':
-    from _quality_functions import *
-    from _cost_functions import *
-    from _utility_functions import *
+    from ._quality_functions import *
+    from ._cost_functions import *
+    from ._utility_functions import *
 
     # Create an agent of a specific type
     agent_type = AgentType(LinearQualityFunction(1.5, 0.2),
                            QuadraticCostFunction(0.1),
                            ExponentialUtilityFunction(2.0))
     agent = Agent(agent_type)
-    print str(agent)
+    print(str(agent))
 
     # Let's create more types
     agent_type2 = AgentType(LinearQualityFunction(2.5, 0.1),
                             QuadraticCostFunction(0.3),
                             ExponentialUtilityFunction(1.5))
     agent2 = Agent([agent_type, agent_type2])
-    print str(agent2)
+    print(str(agent2))
