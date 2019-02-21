@@ -57,7 +57,7 @@ if __name__ == '__main__':
     model = make_model()
     mcmc = pm.MCMC(model)
     mcmc.use_step_method(ps.RandomWalk, model['a'])
-    smc = SteadyPaceSMC(mcmc, num_particles=4000, num_mcmc=1, verbose=4,
+    smc = SteadyPaceSMC(mcmc, num_particles=400, num_mcmc=1, verbose=4,
                  gamma_is_an_exponent=True,
                  ess_reduction=0.6, adapt_proposal_step=True,
                  mpi=mpi)
