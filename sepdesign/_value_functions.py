@@ -33,7 +33,7 @@ class RequirementValueFunction(ValueFunction):
         self._gamma = gamma
         self._num_subsystems = num_subsystems
         t_qs = [T.dvector('q%d' % i) for i in range(num_subsystems)]
-        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (1.0 - t_q))) 
+        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (.5 - t_q))) 
                       for t_q in t_qs], axis=0)
         super(RequirementValueFunction, self).__init__(t_qs, t_v)
 
