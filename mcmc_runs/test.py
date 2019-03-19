@@ -24,7 +24,7 @@ class SteadyPaceSMC(ps.SMC):
 
 def make_model():
     agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
@@ -56,7 +56,8 @@ def make_model():
     def loglike(value=1.0, fg=fg, gamma=gamma):
         f = fg[0]
         g = fg[1:]
-        return gamma*20.*f + gamma*(min(0., g[0]))
+
+        return gamma*10.*f + gamma*1.*(min(0., g[0]))
         # return gamma * f + \
         #         np.sum(np.log(1.0 / (1.0 + np.exp(-gamma*10. * g))))
     return locals()
@@ -72,7 +73,7 @@ if __name__ == '__main__':
                  mpi=mpi)
     smc.initialize(0.1)
     results = []
-    for gamma in np.linspace(0., 20, 200)[1:]:
+    for gamma in np.linspace(0., 30, 300)[1:]:
         smc.move_to(gamma)
         pa = smc.get_particle_approximation().gather()
         if mpi.COMM_WORLD.Get_rank() == 0:
@@ -89,14 +90,16 @@ if __name__ == '__main__':
             # print('Type 2\t%1.3f\t%1.3f' % (g10, g11))
             print('> ', pa.a[idx, :])
             results += [[pa.fg[idx, 0], pa.fg[idx, 1:], pa.a[idx, :]]]
+
     if mpi.COMM_WORLD.Get_rank() == 0:
         temp = [results[i][0]for i in range(len(results))]
         idx = np.argmax(temp)
         print(results[idx])
+        results_all = pa.a
+        print(results_all)
+        with open('file.pickle', 'wb') as out:
+            pickle.dump(results_all, out)
 
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
-
-
-
+# max f =  0.9226005313621293 g =  [0.01296518]
+# >  [4.68148524e-04 7.40219490e-02 1.48920538e+00]

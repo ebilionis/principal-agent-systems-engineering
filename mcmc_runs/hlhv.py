@@ -23,14 +23,14 @@ class SteadyPaceSMC(ps.SMC):
 
 
 def make_model():
-    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+    agent_type11 = AgentType(LinearQualityFunction(1.5, 0.4),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
-    t = RequirementTransferFunction(gamma=50.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=100.),
+                        RequirementPlusValueFunction(1, [0.2], gamma=100.),
                         agents, t)
     p.compile()
 
@@ -65,14 +65,14 @@ def make_model():
 if __name__ == '__main__':
     model = make_model()
     mcmc = pm.MCMC(model)
-    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.002)
+    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.001)
     smc = SteadyPaceSMC(mcmc, num_particles=400, num_mcmc=5, verbose=4,
                  gamma_is_an_exponent=True,
                  ess_reduction=0.9, adapt_proposal_step=True,
                  mpi=mpi)
     smc.initialize(0.1)
     results = []
-    for gamma in np.linspace(0., 20, 200)[1:]:
+    for gamma in np.linspace(0., 30, 300)[1:]:
         smc.move_to(gamma)
         pa = smc.get_particle_approximation().gather()
         if mpi.COMM_WORLD.Get_rank() == 0:
@@ -94,9 +94,10 @@ if __name__ == '__main__':
         idx = np.argmax(temp)
         print(results[idx])
 
+# max f =  0.8939303032016759 g =  [0.00402095]
+# >  [9.54014977e-04 1.63750528e-02 9.71807064e-01 1.64804780e-01]
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
+
 
 
 

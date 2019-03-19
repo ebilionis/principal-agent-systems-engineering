@@ -124,13 +124,13 @@ class AgentType(object):
         t_exp_fun = T.dot(w, t_fun)
         return Function([t_e, t_a], t_exp_fun)
 
-    def get_exp_pi(self, t, degree=100):
+    def get_exp_pi(self, t, degree=200):
         """
         Get the expectation of the payoff.
         """
         return self._get_expectation(self.get_pi(t),degree=degree)
 
-    def get_exp_util(self, t, degree=100):
+    def get_exp_util(self, t, degree=200):
         """
         Get the expected utility of the payoff.
         """

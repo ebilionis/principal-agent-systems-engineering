@@ -23,8 +23,8 @@ class SteadyPaceSMC(ps.SMC):
 
 
 def make_model():
-    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+    agent_type11 = AgentType(LinearQualityFunction(1.2, 0.5),
+                            QuadraticCostFunction(.2),
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
@@ -95,8 +95,5 @@ if __name__ == '__main__':
         print(results[idx])
 
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
-
-
-
+# max f =  0.41975147855384387 g =  [0.01747935]
+# >  [5.75618481e-04 4.31475489e-01 1.10603409e+00]

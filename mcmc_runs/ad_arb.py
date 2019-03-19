@@ -23,11 +23,14 @@ class SteadyPaceSMC(ps.SMC):
 
 
 def make_model():
-    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.1),
+                            QuadraticCostFunction(1.2),
                             ExponentialUtilityFunction(-2.0))
 
-    agents = Agent([agent_type11])
+    agent_type12 = AgentType(LinearQualityFunction(1.2, 0.5),
+                            QuadraticCostFunction(0.2),
+                            ExponentialUtilityFunction(-2.0))
+    agents = Agent([agent_type11, agent_type12])
     t = RequirementTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1, gamma=100.),
@@ -36,7 +39,7 @@ def make_model():
 
     gamma = 1.0
     kappa = 10.0
-    a = pm.Uniform('a', 0.0, 1.5, size=(p.num_param,))
+    a = pm.Uniform('a', 0.0, 1.6, size=(p.num_param,))
 
     @pm.deterministic
     def fg(a=a):
@@ -45,6 +48,13 @@ def make_model():
         f = res['exp_u_pi_0']
         # The constraints that must be positive
         g = res['exp_u_pi_agents']
+
+        
+
+        type_1 = a[:3]
+        type_2 = a[3:]
+        g[0] += [g[0][0] - p._irc[0][0].evaluate(type_2)['exp_u_pi_e_star']]
+        g[0] += [g[0][1] - p._irc[0][1].evaluate(type_1)['exp_u_pi_e_star']]
 
         return np.hstack([[f], g[0]])
 
@@ -56,7 +66,7 @@ def make_model():
     def loglike(value=1.0, fg=fg, gamma=gamma):
         f = fg[0]
         g = fg[1:]
-        return gamma*20.*f + gamma*(min(0., g[0]))
+        return gamma*10.*f + gamma*40.*(min(0., g[0]) + min(0., g[1]) + min(0., g[2]) +  min(0., g[3]))
         # return gamma * f + \
         #         np.sum(np.log(1.0 / (1.0 + np.exp(-gamma*10. * g))))
     return locals()
@@ -65,14 +75,14 @@ def make_model():
 if __name__ == '__main__':
     model = make_model()
     mcmc = pm.MCMC(model)
-    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.002)
-    smc = SteadyPaceSMC(mcmc, num_particles=400, num_mcmc=5, verbose=4,
+    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.001)
+    smc = SteadyPaceSMC(mcmc, num_particles=200, num_mcmc=4, verbose=4,
                  gamma_is_an_exponent=True,
                  ess_reduction=0.9, adapt_proposal_step=True,
                  mpi=mpi)
     smc.initialize(0.1)
     results = []
-    for gamma in np.linspace(0., 20, 200)[1:]:
+    for gamma in np.linspace(0., 30, 300)[1:]:
         smc.move_to(gamma)
         pa = smc.get_particle_approximation().gather()
         if mpi.COMM_WORLD.Get_rank() == 0:
@@ -94,9 +104,8 @@ if __name__ == '__main__':
         idx = np.argmax(temp)
         print(results[idx])
 
-
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
+# max f =  0.4626007221475008 g =  [0.26355202 0.07272859 0.00224418 0.02957194]
+# >  [0.00116094 0.4717341  1.1016794  0.00751413 0.43612163 1.04886804]
 
 
 

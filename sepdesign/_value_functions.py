@@ -33,7 +33,7 @@ class RequirementValueFunction(ValueFunction):
         self._gamma = gamma
         self._num_subsystems = num_subsystems
         t_qs = [T.dvector('q%d' % i) for i in range(num_subsystems)]
-        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (.5 - t_q))) 
+        t_v = 1.0 * T.prod([1.0 / (1.0 + T.exp(gamma * (1.0 - t_q))) 
                       for t_q in t_qs], axis=0)
         super(RequirementValueFunction, self).__init__(t_qs, t_v)
 
@@ -64,7 +64,7 @@ class RequirementPlusValueFunction(ValueFunction):
         self._num_subsystems = num_subsystems
         self._alphas = alphas
         t_qs = [T.dvector('q%d' % i) for i in range(num_subsystems)]
-        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (1.0 - t_q))) * (ai * T.tanh(t_q - 1.0) + 1.0)
+        t_v = T.prod([1.0 / (1.0 + T.exp(gamma * (1.0 - t_q))) * (ai * (t_q - 1.0)+1.0)
                       for t_q, ai in zip(t_qs, self._alphas)], axis=0)
         super(RequirementPlusValueFunction, self).__init__(t_qs, t_v)
 
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     sns.set_context('paper')
 
     # A value function for the case N = 1
-    v1 = RequirementPlusValueFunction(1,[0.2])
+    v1 = RequirementPlusValueFunction(1,[1.], gamma=100)
     v1.compile()
     qs = np.linspace(0, 2, 100)
     v1s = np.array([v1([q]) for q in qs]) # the [q] is required because it
@@ -109,6 +109,8 @@ if __name__ == '__main__':
     ax.plot(qs, v1s)
     ax.set_xlabel('q')
     ax.set_ylabel('V')
+    fig.savefig('temp.png')
+    quit()
 
     # A value function for the case N = 2
     v2 = RequirementPlusValueFunction(2, np.array([0.2,0.3]))

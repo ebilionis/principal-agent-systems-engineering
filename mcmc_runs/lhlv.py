@@ -23,14 +23,14 @@ class SteadyPaceSMC(ps.SMC):
 
 
 def make_model():
-    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
+    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.1),
                             QuadraticCostFunction(0.4),
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
-    t = RequirementTransferFunction(gamma=50.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=100.),
+                        RequirementPlusValueFunction(1, [0.2], gamma=100.),
                         agents, t)
     p.compile()
 
@@ -95,8 +95,8 @@ if __name__ == '__main__':
         print(results[idx])
 
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
+# max f =  0.9548107152539542 g =  [0.00216216]
+# >  [8.36626995e-04 7.22098822e-02 1.12731762e+00 1.93902266e-01]
 
 
 

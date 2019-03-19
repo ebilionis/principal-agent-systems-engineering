@@ -16,23 +16,21 @@ import mpi4py.MPI as mpi
 
 class SteadyPaceSMC(ps.SMC):
 
-    def _find_next_gamma(self, gamma):
-        self._loglike = self._get_loglike(self.gamma, gamma)
-        return gamma
+    pass
+    #def _find_next_gamma(self, gamma):
+    #    self._loglike = self._get_loglike(self.gamma, gamma)
+    #    return gamma
 
 
 def make_model():
-    agent_type11 = AgentType(LinearQualityFunction(2.0, 0.1),
-                            QuadraticCostFunction(0.04),
+    agent_type11 = AgentType(LinearQualityFunction(2.5, 0.1),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(-2.0))
 
-    agent_type12 = AgentType(LinearQualityFunction(2.0, 0.1),
-                            QuadraticCostFunction(0.1),
-                            ExponentialUtilityFunction())
     agents = Agent([agent_type11])
-    t = RequirementPlusIncentiveTransferFunction(gamma=30.)
+    t = RequirementTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=50.),
+                        RequirementValueFunction(1, gamma=100.),
                         agents, t)
     p.compile()
 
@@ -48,61 +46,54 @@ def make_model():
         # The constraints that must be positive
         g = res['exp_u_pi_agents']
 
-        # g[0] += [p._irc[0][0].evaluate(a[:4])['exp_u_pi_e_star']-\
-        #       p._irc[0][0].evaluate(a[4:])['exp_u_pi_e_star']]
-
-        # g[0] += [p._irc[0][1].evaluate(a[4:])['exp_u_pi_e_star']-\
-        #       p._irc[0][1].evaluate(a[:4])['exp_u_pi_e_star']]
-
-
         return np.hstack([[f], g[0]])
-    @pm.deterministic
-    def results(a=a):
-        return p.evaluate(a)
+
+    #@pm.deterministic
+    #def results(a=a):
+    #    return p.evaluate(a)
     
     @pm.stochastic(dtype=float, observed=True)
     def loglike(value=1.0, fg=fg, gamma=gamma):
         f = fg[0]
-        g = fg[1]
-        return gamma * f + \
-                np.sum(np.log(1.0 / (1.0 + np.exp(-gamma * g))))
+        g = fg[1:]
+        return gamma*20.*f + gamma*(min(0., g[0]))
+        # return gamma * f + \
+        #         np.sum(np.log(1.0 / (1.0 + np.exp(-gamma*10. * g))))
     return locals()
 
 
 if __name__ == '__main__':
     model = make_model()
     mcmc = pm.MCMC(model)
-    mcmc.use_step_method(ps.RandomWalk, model['a'])
-    smc = SteadyPaceSMC(mcmc, num_particles=500, num_mcmc=1, verbose=4,
+    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.002)
+    smc = SteadyPaceSMC(mcmc, num_particles=400, num_mcmc=5, verbose=4,
                  gamma_is_an_exponent=True,
-                 ess_reduction=0.6, adapt_proposal_step=True,
+                 ess_reduction=0.9, adapt_proposal_step=True,
                  mpi=mpi)
-    smc.initialize(0.01)
-    for gamma in np.linspace(.0, 80.0, 800)[1:]:
+    smc.initialize(0.1)
+    results = []
+    for gamma in np.linspace(0., 20, 200)[1:]:
         smc.move_to(gamma)
         pa = smc.get_particle_approximation().gather()
         if mpi.COMM_WORLD.Get_rank() == 0:
-            idx = np.argmax(pa.fg[:, 0])
+            # idx = np.argmax(pa.fg[:, 0])
+            idx = np.argmax(pa.weights)
             print('max f = ', pa.fg[idx, 0], 'g = ', pa.fg[idx, 1:])
+            # g = pa.fg[idx, 1:]
+            # print('\tType 1\tType 2')
+            # g00 = g[0]
+            # g01 = -(g[2] - g00)
+            # g11 = g[1]
+            # g10 = -(g[3] - g11)
+            # print('Type 1\t%1.3f\t%1.3f' % (g00, g01))
+            # print('Type 2\t%1.3f\t%1.3f' % (g10, g11))
             print('> ', pa.a[idx, :])
-
+            results += [[pa.fg[idx, 0], pa.fg[idx, 1:], pa.a[idx, :]]]
     if mpi.COMM_WORLD.Get_rank() == 0:
-        idx = np.argmax(pa.fg[:, 0])
-        print()
-        print('*'*30,' final results ','*'*30)
-        print()
-        print('final results: ', pa.results[idx])
-        print('parameters: ', pa.a[idx, :])
-        print()
-        print('max f = ', pa.fg[idx, 0], 'g = ', pa.fg[idx, 1:])
-        print('> ', pa.a[idx, :])
-        print()
-        print('*'*80)
+        temp = [results[i][0]for i in range(len(results))]
+        idx = np.argmax(temp)
+        print(results[idx])
 
 
-# {'exp_u_pi_agents': [[0.017195655308422337]],
-#  'exp_u_pi_0': array(0.97381557),
-#  'e_stars': [0.6663257172411604],
-#  'd_exp_u_pi_0_da': array([-1.        , -0.97032389,  0.02857195, -0.21747064])}
-
-
+# max f =  0.9707338975875157 g =  [0.00122592]
+# >  [4.78708040e-04 2.92274847e-02 1.14481115e+00]

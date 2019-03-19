@@ -24,27 +24,37 @@ class SteadyPaceSMC(ps.SMC):
 
 def make_model():
     agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(-2.0))
 
-    agents = Agent([agent_type11])
+    agent_type12 = AgentType(LinearQualityFunction(2.5, 0.4),
+                            QuadraticCostFunction(0.4),
+                            ExponentialUtilityFunction(-2.0))
+    agent1 = Agent([agent_type11])
+    agent2 = Agent([agent_type12])
     t = RequirementTransferFunction(gamma=50.)
-    p = PrincipalProblem(ExponentialUtilityFunction(),
+    p1 = PrincipalProblem(ExponentialUtilityFunction(),
                         RequirementValueFunction(1, gamma=100.),
-                        agents, t)
-    p.compile()
+                        agent1, t)
+    p2 = PrincipalProblem(ExponentialUtilityFunction(),
+                        RequirementValueFunction(1, gamma=100.),
+                        agent2, t)
+    p1.compile()
+    p2.compile()
 
     gamma = 1.0
     kappa = 10.0
-    a = pm.Uniform('a', 0.0, 1.5, size=(p.num_param,))
+    a = pm.Uniform('a', 0.0, 1.7, size=(3,))
 
     @pm.deterministic
     def fg(a=a):
-        res = p.evaluate(a)
+        res1 = p1.evaluate(a)
+        res2 = p2.evaluate(a)
         # The thing that you want to maximize
-        f = res['exp_u_pi_0']
+        f = 0.5*res1['exp_u_pi_0'] + 0.5*res2['exp_u_pi_0']
         # The constraints that must be positive
-        g = res['exp_u_pi_agents']
+        g    =  res1['exp_u_pi_agents']
+        g[0] += res2['exp_u_pi_agents'][0]
 
         return np.hstack([[f], g[0]])
 
@@ -56,23 +66,23 @@ def make_model():
     def loglike(value=1.0, fg=fg, gamma=gamma):
         f = fg[0]
         g = fg[1:]
-        return gamma*20.*f + gamma*(min(0., g[0]))
-        # return gamma * f + \
-        #         np.sum(np.log(1.0 / (1.0 + np.exp(-gamma*10. * g))))
+        # return gamma*f + gamma*20.0*(min(0., g[0]) + min(0., g[1]))
+        return gamma * f + \
+                np.sum(np.log(1.0 / (1.0 + np.exp(-gamma * g))))
     return locals()
 
 
 if __name__ == '__main__':
     model = make_model()
     mcmc = pm.MCMC(model)
-    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.002)
-    smc = SteadyPaceSMC(mcmc, num_particles=400, num_mcmc=5, verbose=4,
+    mcmc.use_step_method(ps.RandomWalk, model['a'], proposal_sd=0.001)
+    smc = SteadyPaceSMC(mcmc, num_particles=100, num_mcmc=2, verbose=4,
                  gamma_is_an_exponent=True,
                  ess_reduction=0.9, adapt_proposal_step=True,
                  mpi=mpi)
     smc.initialize(0.1)
     results = []
-    for gamma in np.linspace(0., 20, 200)[1:]:
+    for gamma in np.linspace(0., 40, 100)[1:]:
         smc.move_to(gamma)
         pa = smc.get_particle_approximation().gather()
         if mpi.COMM_WORLD.Get_rank() == 0:
@@ -94,9 +104,5 @@ if __name__ == '__main__':
         idx = np.argmax(temp)
         print(results[idx])
 
-
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
-
-
-
+# max f =  0.6956473585700186 g =  [0.37573252 0.03126238]
+# >  [0.00286624 0.30889572 1.08027044]

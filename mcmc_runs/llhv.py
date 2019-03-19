@@ -24,19 +24,19 @@ class SteadyPaceSMC(ps.SMC):
 
 def make_model():
     agent_type11 = AgentType(LinearQualityFunction(2.5, 0.4),
-                            QuadraticCostFunction(0.4),
+                            QuadraticCostFunction(0.1),
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
-    t = RequirementTransferFunction(gamma=50.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=100.),
+                        RequirementPlusValueFunction(1, [0.2], gamma=100.),
                         agents, t)
     p.compile()
 
     gamma = 1.0
     kappa = 10.0
-    a = pm.Uniform('a', 0.0, 1.5, size=(p.num_param,))
+    a = pm.Uniform('a', 0.0, 1.7, size=(p.num_param,))
 
     @pm.deterministic
     def fg(a=a):
@@ -56,6 +56,7 @@ def make_model():
     def loglike(value=1.0, fg=fg, gamma=gamma):
         f = fg[0]
         g = fg[1:]
+
         return gamma*20.*f + gamma*(min(0., g[0]))
         # return gamma * f + \
         #         np.sum(np.log(1.0 / (1.0 + np.exp(-gamma*10. * g))))
@@ -95,8 +96,5 @@ if __name__ == '__main__':
         print(results[idx])
 
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
-
-
-
+# max f =  1.1968105936043492 g =  [0.00239382]
+# >  [6.58002945e-04 6.18160056e-03 1.66424033e+00 1.14966923e-01]

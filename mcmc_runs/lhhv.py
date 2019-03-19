@@ -28,9 +28,9 @@ def make_model():
                             ExponentialUtilityFunction(-2.0))
 
     agents = Agent([agent_type11])
-    t = RequirementTransferFunction(gamma=50.)
+    t = RequirementPlusIncentiveTransferFunction(gamma=50.)
     p = PrincipalProblem(ExponentialUtilityFunction(),
-                        RequirementValueFunction(1, gamma=100.),
+                        RequirementPlusValueFunction(1, [0.2], gamma=100.),
                         agents, t)
     p.compile()
 
@@ -95,8 +95,8 @@ if __name__ == '__main__':
         print(results[idx])
 
 
-# max f =  0.7672023064383466 g =  [0.0052189]
-# >  [5.95312633e-04 2.50356165e-01 1.38234125e+00]
+# max f =  0.925475008568849 g =  [0.00434983]
+# >  [4.81904759e-04 1.88055773e-01 1.44746756e+00 1.67043143e-01]
 
 
 
